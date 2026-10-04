@@ -21,6 +21,7 @@ yarn-error.log*
 *.tmp
 *.bak
 *.bak.*
+*.orig
 *_scan.py
 _verify_*.js
 

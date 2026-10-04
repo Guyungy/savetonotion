@@ -64,12 +64,26 @@ python add_site.py --restore
 export NODE_PATH="C:/Users/diriw/.workbuddy/binaries/node/workspace/node_modules"
 
 node stn-adapt/verify-extension-loads.js     # 扩展能否加载
+node stn-adapt/check-snapshot.js             # 页面快照是不是真内容（不是拦截页）
 node stn-adapt/test-levelplus.js             # 离线单测（不需联网）
 node stn-adapt/verify-levelplus-live.js      # 真机开目标页验证
 node stn-adapt/control-noext.js              # 无扩展对照（排除站点自身报错）
 ```
 
 扩展 ID 应为 `ldmmifpegigmeammaeckplhnjbbpccmm`。
+
+### ⚠️ 抓页面快照时不要带 cookie
+
+实测某站（level-plus.net）反直觉的行为：
+
+| 请求 | 响应 |
+|---|---|
+| 不带 cookie | 200 / 205KB / **真内容** |
+| 带真实登录 cookie | 200 / 31KB / **拦截页** |
+
+登录令牌与 Cloudflare `cf_clearance` 配套，而后者绑定 IP+UA，
+跨机器就失效并被风控降级。**拦截页同样是 200**，所以抓完务必跑
+`check-snapshot.js`，不要靠状态码判断。
 
 ## 有什么坑
 

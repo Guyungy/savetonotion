@@ -75,6 +75,9 @@ node stn-adapt/control-noext.js
 
 # 只确认扩展能被 Chrome 加载（改完任何扩展内文件后都该跑一次）
 node stn-adapt/verify-extension-loads.js
+
+# 快照体检（确认抓下来的页面是真内容，不是拦截页）
+node stn-adapt/check-snapshot.js
 ```
 
 页面快照在 `stn-adapt/sample-levelplus.html`，已随仓库提供。
@@ -85,13 +88,33 @@ curl -sS -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" \
   "https://level-plus.net/read.php?tid-2881354.html" \
   -o stn-adapt/sample-levelplus.html
-# 抓完务必验一下是不是真内容（拦截页也是 200）：
-grep -c 'id="read_tpc"' stn-adapt/sample-levelplus.html   # 应为 1
+
+# 🔴 抓完必须验，拦截页也是 200 + 完整 HTML
+node stn-adapt/check-snapshot.js
 ```
 
 > 🔴 **快照不要放扩展根目录，也不要用 `_` 开头命名。**
 > Chrome 拒绝加载任何以 `_` 命名的扩展内容，放在根部会直接导致
 > 「无法加载清单」。这是本项目第二次踩这个坑。
+
+### 🔴 不要带 cookie 抓（反直觉，但实测如此）
+
+| 请求 | 响应 |
+|---|---|
+| **不带任何 cookie** | 200 / 205KB / **真内容** ✅ |
+| **带真实登录 cookie** | 200 / 31KB / **拦截页** ❌ |
+
+两种都是 200 + 完整 HTML。带 cookie 反而被拒的原因是：
+phpwind 的 `eb9e6_winduser` 登录令牌与 Cloudflare 的 `cf_clearance`
+配套，而 `cf_clearance` **绑定 IP + UA 指纹**。从别的机器/沙箱发请求时
+指纹对不上，服务端判定登录态可疑 → 风控降级成「您没有登录或者您没有
+权限访问此页面」。
+
+**结论：这个站的 cookie 无法跨机器复用，也不需要**——匿名请求就能拿到
+内容。这也意味着 `check-snapshot.js` 是必需的，不能靠状态码判断。
+
+> 附带提醒：不要把 cookie 贴进任何会落盘的对话/文件。
+> `eb9e6_winduser` 是登录令牌，`cf_clearance` 是 CF 通行证，等同于账号凭证。
 
 ## 有什么坑
 

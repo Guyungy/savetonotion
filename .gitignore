@@ -20,7 +20,9 @@ yarn-debug.log*
 yarn-error.log*
 *.tmp
 *.bak
+*.bak.*
 *_scan.py
+_verify_*.js
 
 # ---- 依赖（本项目为解包产物，无 node_modules 需求）----
 node_modules/

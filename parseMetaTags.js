@@ -431,6 +431,113 @@ function applyLevelPlusMetadata(data) {
         return;
     }
 }
+function applyDiscuzMetadata(data) {
+    // Discuz! X 论坛通用适配（javbus.com/forum 等一大批中文论坛都用它）
+    // 结构高度标准化，选择器跨站点通用：
+    //   标题  #thread_subject
+    //   楼层  #postlist > div[id^="post_"]，首个即楼主
+    //   正文  楼层内 .t_f（需排除 .quote 引用块）
+    //   作者  楼层内 .authi a
+    //   时间  em[id^="authorposton"]
+    // URL 有 slug 与 query 两种写法，统一收敛成 tid 形式。
+    try {
+        if (!document.querySelector("#postlist") && !document.querySelector("#thread_subject"))
+            return;
+        // 标题
+        var subj = document.querySelector("#thread_subject");
+        var subjText = subj ? (subj.textContent || "").trim() : "";
+        if (subjText) {
+            data.title = subjText;
+        }
+        else if (data.title) {
+            // 退回 <title>，剥掉「 - Discuz! Board」「 - 版块名 - Powered by Discuz!」等后缀
+            data.title = data.title.replace(/\s*[-–|]\s*(Powered by Discuz!?|Discuz!? Board)\s*$/i, "")
+                .replace(/\s*[-–|]\s*[^-–|]{1,40}\s*[-–|]\s*Powered by Discuz!?\s*$/i, "")
+                .trim();
+        }
+        // 首帖：优先用 #postlist 里的第一个楼层，退回 #postlist 整体
+        var postlist = document.querySelector("#postlist");
+        var firstPost = postlist ? postlist.querySelector('div[id^="post_"]') : null;
+        var scope = firstPost || postlist;
+        var author = "";
+        if (scope) {
+            // 作者：.authi 内的首个链接（Discuz 标准）
+            var authA = scope.querySelector(".authi a");
+            if (authA) {
+                author = (authA.textContent || "").trim();
+            }
+            else {
+                // 兜底：楼层里指向 home.php?mod=space&uid= 的链接
+                var uidA = scope.querySelector('a[href*="mod=space"][href*="uid="], a[href*="uid="]');
+                if (uidA)
+                    author = (uidA.textContent || "").trim();
+            }
+            if (author) {
+                data.author = author;
+                if (data.title)
+                    data.title = "".concat(data.title, " - ").concat(author);
+            }
+            // 发帖时间：Discuz X 用 em#authorposton<pid>，title 属性是完整时间
+            var timeEl = scope.querySelector('em[id^="authorposton"]');
+            if (timeEl) {
+                var timeText = (timeEl.getAttribute("title") || timeEl.textContent || "").trim();
+                // title 形如 "发表于 2024-01-01 12:00:00"（简/繁都要兼容），去掉前缀词
+                timeText = timeText.replace(/^\s*(?:\u53d1\u8868\u4e8e|\u767c\u8868\u65bc|\u53d1\u8868\u65bc|\u767c\u8868\u4e8e)\s*/, "").trim();
+                if (timeText)
+                    data.publicationDate = timeText;
+            }
+            // 正文：.t_f，排除引用块与附件列表
+            var bodies = scope.querySelectorAll(".t_f");
+            var text = "";
+            for (var i = 0; i < bodies.length; i++) {
+                var clone = bodies[i].cloneNode(true);
+                // 删掉引用/附件/隐藏内容等噪音节点
+                var junk = clone.querySelectorAll(".quote, blockquote, .attach_nopermission, .showhide, script, style");
+                for (var j = 0; j < junk.length; j++) {
+                    if (junk[j].parentNode)
+                        junk[j].parentNode.removeChild(junk[j]);
+                }
+                var t = (clone.textContent || "").replace(/\s+/g, " ").trim();
+                if (t) {
+                    text = t;
+                    break;
+                }
+            }
+            if (text)
+                data.description = text.length > 500 ? text.slice(0, 500) + "..." : text;
+            // 封面：正文里第一张非表情的图（Discuz 表情在 static/image/smiley 下）
+            if (!data.image) {
+                var imgs = scope.querySelectorAll(".t_f img");
+                for (var k = 0; k < imgs.length; k++) {
+                    var cand = imgs[k].getAttribute("src") || imgs[k].getAttribute("file") || imgs[k].getAttribute("data-original");
+                    if (!cand || /^data:/i.test(cand))
+                        continue;
+                    if (/\/smiley\/|\/smilies\/|\/images\/smiley|\/common\/smiley/i.test(cand))
+                        continue;
+                    try { cand = new URL(cand, window.location.href).href; } catch (_e4) { continue; }
+                    data.image = cand;
+                    break;
+                }
+            }
+        }
+        // URL 收敛：forum.php?mod=viewthread&tid=176873&extra=xxx -> 只留 mod + tid
+        var u = new URL(window.location.href);
+        var isViewThread = /\/forum\.php$/i.test(u.pathname) && /viewthread/i.test(u.search);
+        if (isViewThread) {
+            var tid = u.searchParams.get("tid");
+            if (!tid) {
+                var mTid = window.location.href.match(/[?&]tid=(\d+)/) || u.pathname.match(/thread-(\d+)/);
+                tid = mTid ? mTid[1] : null;
+            }
+            if (tid) {
+                data.url = "".concat(u.origin).concat(u.pathname, "?mod=viewthread&tid=").concat(tid);
+            }
+        }
+    }
+    catch (_e5) {
+        return;
+    }
+}
 function parseMetaTags() {
     var _a;
     let data = getMetadata(document, window.location);
@@ -458,6 +565,7 @@ function parseMetaTags() {
     }
     applyXMetadata(data);
     applyLevelPlusMetadata(data);
+    applyDiscuzMetadata(data);
     return Object.assign(Object.assign({}, data), { domainName: window.location.hostname });
 }
 // @ts-ignore

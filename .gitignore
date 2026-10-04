@@ -23,10 +23,11 @@ yarn-error.log*
 *.bak.*
 *.orig
 *_scan.py
-_verify_*.js
-_control_*.js
-_site_probe.html
-_probe*.html
+
+# ⚠️ 不要在这里用 "_" 前缀的 glob 规则来忽略文件。
+# 那会诱导你往扩展树里放 "_" 开头的文件，而 Chrome 拒绝加载
+# 任何以 "_" 命名的扩展内容（报 "Filenames starting with _ are reserved"）。
+# 扩展树内的临时文件请用非 "_" 前缀命名，见 stn-adapt/README.md。
 
 # ---- 依赖（本项目为解包产物，无 node_modules 需求）----
 node_modules/

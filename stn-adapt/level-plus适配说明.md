@@ -62,15 +62,36 @@
 ## 怎么用
 
 ```bash
-# 离线单测（用真实抓下来的页面，13+ 用例）
 export NODE_PATH="C:/Users/diriw/.workbuddy/binaries/node/workspace/node_modules"
-node stn-adapt/_test_levelplus.js
+
+# 离线单测（用仓库内的页面快照，14 个用例，不需要联网）
+node stn-adapt/test-levelplus.js
 
 # 真机验证（真加载扩展 → 真开目标页 → 查 DOM 节点可用性）
-node stn-adapt/_verify_levelplus_live.js
+node stn-adapt/verify-levelplus-live.js
+
+# 无扩展对照（证明站点自身报错与我们无关）
+node stn-adapt/control-noext.js
+
+# 只确认扩展能被 Chrome 加载（改完任何扩展内文件后都该跑一次）
+node stn-adapt/verify-extension-loads.js
 ```
 
-页面快照在仓库根的 `_site_probe.html`（已加 .gitignore）。
+页面快照在 `stn-adapt/sample-levelplus.html`，已随仓库提供。
+需要重新抓取时：
+
+```bash
+curl -sS -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
+(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" \
+  "https://level-plus.net/read.php?tid-2881354.html" \
+  -o stn-adapt/sample-levelplus.html
+# 抓完务必验一下是不是真内容（拦截页也是 200）：
+grep -c 'id="read_tpc"' stn-adapt/sample-levelplus.html   # 应为 1
+```
+
+> 🔴 **快照不要放扩展根目录，也不要用 `_` 开头命名。**
+> Chrome 拒绝加载任何以 `_` 命名的扩展内容，放在根部会直接导致
+> 「无法加载清单」。这是本项目第二次踩这个坑。
 
 ## 有什么坑
 
@@ -111,7 +132,7 @@ node stn-adapt/_verify_levelplus_live.js
 
 8. **站点自身有 JS 报错**（`Cannot read properties of null (reading 'version')`）。
    这是站点脚本的问题，跟扩展无关，真机验证时别把它算成失败。
-   判断方法：`stn-adapt/_control_noext.js`（无扩展对照实验）复现同一条报错。
+   判断方法：`stn-adapt/control-noext.js`（无扩展对照实验）复现同一条报错。
 
 9. **🔴 站点会「记住」访客身份，导致时好时坏。**
    这是本次最耗时间的坑。表现：
@@ -128,3 +149,30 @@ node stn-adapt/_verify_levelplus_live.js
 10. **curl 200 不代表你能拿到内容。** 拦截页也是 200 + 完整 HTML，
     得检查 `<title>` 里有没有「注册会员才能进入」，或看关键节点在不在。
     `curl -w` 只看 `http_code` 会被骗。
+
+11. **🔴🔴 扩展树内任何文件/目录都不能以 `_` 开头 —— 这个坑犯了两次。**
+    ```
+    错误: Cannot load extension with file or directory name _site_probe.html.
+          Filenames starting with "_" are reserved for use by the system.
+          无法加载清单。
+    ```
+    Chrome 把 `_` 前缀保留给系统（`_locales` / `_metadata`），而且它是
+    **递归扫描整个扩展目录**的 —— 不只是根目录，子目录里的 `_` 文件同样致命。
+
+    **本文件相关的踩坑记录**：
+    - 第 1 次：汉化目录叫 `_i18n` → 改名 `stn-i18n`
+    - 第 2 次：页面快照 `_site_probe.html` 放扩展根目录 → 直接拒绝加载
+
+    **规避方式（已落地）**：
+    - 快照改名 `sample-levelplus.html`，放 `stn-adapt/` 而非根目录
+    - 所有验证脚本去掉 `_` 前缀（`test-` / `verify-` / `control-`）
+    - `.gitignore` 里**不再写 `_` 前缀的 glob 规则**——那会诱导你往树里
+      放 `_` 开头的文件，等于自掘陷阱
+
+    **排查命令**（改完扩展内任何文件后都该跑）：
+    ```bash
+    find . -name '_*' -not -path './.workbuddy/*' -not -path './.git/*'
+    # 有输出就是要修
+    ```
+    **最终确认**：`node stn-adapt/verify-extension-loads.js` 必须 PASS。
+    只做 `ls` 检查是不够的，必须真加载。

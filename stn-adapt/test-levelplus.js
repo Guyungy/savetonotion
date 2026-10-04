@@ -1,12 +1,22 @@
 // 用真实抓下来的页面离线验证 applyLevelPlusMetadata 的取值逻辑
 // 只测站点专属分支，不依赖网络、不依赖扩展加载。
+//
+// 页面快照放本目录（stn-adapt/sample-levelplus.html），不能放扩展根目录 ——
+// Chrome 拒绝加载任何文件名以 "_" 开头的扩展内容，快照若叫 _site_probe.html
+// 放在根部会直接导致「无法加载清单」。
 const fs = require("fs");
 const path = require("path");
 const { JSDOM } = require("jsdom");
 
 const ROOT = path.resolve(__dirname, "..");
 const SRC = fs.readFileSync(path.join(ROOT, "parseMetaTags.js"), "utf8");
-const HTML = fs.readFileSync(path.join(ROOT, "_site_probe.html"), "utf8");
+const SNAPSHOT = path.join(__dirname, "sample-levelplus.html");
+if (!fs.existsSync(SNAPSHOT)) {
+  console.error("缺少页面快照: " + SNAPSHOT);
+  console.error("抓取方式见 level-plus适配说明.md");
+  process.exit(1);
+}
+const HTML = fs.readFileSync(SNAPSHOT, "utf8");
 
 // 从打包文件里把 applyLevelPlusMetadata 整段抠出来，单独 eval
 const start = SRC.indexOf("function applyLevelPlusMetadata");

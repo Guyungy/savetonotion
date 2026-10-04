@@ -2,11 +2,34 @@
 
 ## 这是什么
 
-给 Save.to 扩展（v4.3.14）增加新网站适配的工具包。**不改任何逻辑代码**，
-只往 `serviceWorker.js` 的两张数据表里插条目。
+给 Save.to 扩展（v4.3.14）增加新网站适配的工具包。
 
-- `适配扩展手册.md` —— 完整方法论文档（四层适配机制、parser schema、验证方式）
-- `add_site.py` —— 一键往适配表插站点的脚本
+- `适配扩展手册.md` —— 完整方法论文档（四层适配机制、三条路径、parser schema）
+- `add_site.py` —— 一键往适配表插站点的脚本（**只能改数据表**）
+- `level-plus适配说明.md` —— 单站点适配实例（需要改 DOM 层的做法）
+- `test-levelplus.js` + `sample-levelplus.html` —— 离线单测与其页面快照
+
+## 🔴 改任何东西之前先读这条
+
+**扩展目录树内，任何文件或目录都不能以 `_` 开头。**
+
+Chrome 把 `_` 前缀保留给系统，且**递归扫描整个扩展目录**：
+
+```
+错误: Cannot load extension with file or directory name _xxx.
+      Filenames starting with "_" are reserved for use by the system.
+      无法加载清单。
+```
+
+这个坑本项目踩了**两次**（`_i18n` 目录、`_site_probe.html` 快照）。
+命名临时文件请一律用 `tmp-` / `verify-` / `test-` / `control-` 前缀。
+
+改完扩展内任何文件后，跑一次这个确认（只 `ls` 是不够的，必须真加载）：
+
+```bash
+find . -name '_*' -not -path './.workbuddy/*' -not -path './.git/*'   # 应无输出
+node stn-adapt/verify-extension-loads.js                              # 应 PASS
+```
 
 ## 怎么用
 
@@ -38,13 +61,15 @@ python add_site.py --restore
 ### 验证
 
 ```bash
-"C:/Users/diriw/AppData/Local/ms-playwright/chromium-1234/chrome-win64/chrome.exe" \
-  --load-extension="C:/Users/diriw/Documents/GitHub/SaveToNotion" \
-  --disable-extensions-except="C:/Users/diriw/Documents/GitHub/SaveToNotion"
+export NODE_PATH="C:/Users/diriw/.workbuddy/binaries/node/workspace/node_modules"
+
+node stn-adapt/verify-extension-loads.js     # 扩展能否加载
+node stn-adapt/test-levelplus.js             # 离线单测（不需联网）
+node stn-adapt/verify-levelplus-live.js      # 真机开目标页验证
+node stn-adapt/control-noext.js              # 无扩展对照（排除站点自身报错）
 ```
 
-然后到 `chrome://extensions` 看有没有红字报错，扩展 ID 应为
-`ldmmifpegigmeammaeckplhnjbbpccmm`。
+扩展 ID 应为 `ldmmifpegigmeammaeckplhnjbbpccmm`。
 
 ## 有什么坑
 
@@ -73,6 +98,14 @@ python add_site.py --restore
 
 **要加页面悬浮按钮、列表抓取这类 parser，必须改 `content/content.js`**，
 脚本不覆盖这块。做法见 `适配扩展手册.md` 的路径 B。
+
+**还有一种情况脚本也搞不定**：URL 装饰参数写在 **path 段**（如 phpwind 的
+`read.php?tid-123-uid-456.html`），而不是 query string。扩展的 `cleanupUrl()`
+只清 `search` + `hash`，碰不到 `pathname`，`nc` 表再怎么写都没用。
+这种要走 DOM 层（改 `parseMetaTags.js` 加站点分支），完整实例见
+`level-plus适配说明.md`。
+
+快速判断：`new URL(u).search` 拿出来是空串 → 参数在 path 段，脚本救不了。
 
 ### 5. 参数名会做合法性校验
 

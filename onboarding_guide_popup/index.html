@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Save.to - 使用引导</title>
+    <style>
+        :root {
+            --gray-950: #171717;
+            --gray-900: #1c1c1c;
+            --gray-800: #292929;
+            --gray-700: #333333;
+            --gray-600: #5c5c5c;
+            --gray-500: #7b7b7b;
+            --gray-400: #a3a3a3;
+            --gray-300: #d1d1d1;
+            --gray-200: #ebebeb;
+            --gray-100: #f5f5f5;
+            --gray-50: #f7f7f7;
+            --gray-0: #ffffff;
+
+            --blue-950: #122368;
+            --blue-900: #182f8b;
+            --blue-800: #1f3bad;
+            --blue-700: #2547d0;
+            --blue-600: #3559e9;
+            --blue-500: #335cff;
+            --blue-400: #6895ff;
+            --blue-300: #97baff;
+            --blue-200: #c0d5ff;
+            --blue-100: #d5e2ff;
+            --blue-50: #ebf1ff;
+
+            --green-500: #22c55e;
+            --green-100: #dcfce7;
+
+            --neutral-950: var(--gray-950);
+            --neutral-900: var(--gray-900);
+            --neutral-800: var(--gray-800);
+            --neutral-700: var(--gray-700);
+            --neutral-600: var(--gray-600);
+            --neutral-500: var(--gray-500);
+            --neutral-400: var(--gray-400);
+            --neutral-300: var(--gray-300);
+            --neutral-200: var(--gray-200);
+            --neutral-100: var(--gray-100);
+            --neutral-50: var(--gray-50);
+            --neutral-0: var(--gray-0);
+
+            --primary-darker: var(--blue-700);
+            --primary-base: var(--blue-500);
+
+            --text-strong-950: var(--neutral-950);
+            --text-sub-600: var(--neutral-600);
+            --text-soft-400: var(--neutral-400);
+            --text-disabled-300: var(--neutral-300);
+            --text-white-0: var(--neutral-0);
+
+            --bg-white-0: var(--neutral-0);
+            --stroke-soft-200: var(--neutral-200);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-white-0);
+            color: var(--text-strong-950);
+            line-height: 1.5;
+        }
+
+        .container {
+            width: 350px;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: var(--bg-white-0);
+            color: var(--text-strong-950);
+        }
+
+        .header {
+            padding-bottom: 14px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid var(--stroke-soft-200);
+        }
+
+        .title {
+            font-size: 14px;
+            font-weight: 600;
+            margin: 0 0 0 8px;
+            color: var(--text-strong-950);
+        }
+
+        .content {
+            margin-bottom: 20px;
+            color: var(--text-sub-600);
+        }
+
+        .content p {
+            font-size: 13px;
+            line-height: 1.5;
+            margin: 0 0 12px 0;
+        }
+
+        .content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .button {
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
+            outline: none;
+            transition: all 0.2s ease-out;
+            border: none;
+            cursor: pointer;
+            height: 40px;
+            gap: 12px;
+            border-radius: 10px;
+            padding: 0 14px;
+            justify-content: center;
+            background-color: var(--primary-base);
+            color: var(--text-white-0);
+            width: 100%;
+            margin-top: 8px;
+            position: relative;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .button:hover {
+            background-color: var(--primary-darker);
+        }
+
+        .button:focus-visible {
+            box-shadow: 0 0 0 2px rgba(51, 92, 255, 0.3);
+        }
+
+        .button:disabled {
+            pointer-events: none;
+            background-color: var(--text-disabled-300);
+            color: var(--text-soft-400);
+        }
+
+        .button-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .button-text {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .icon-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            color: var(--green-500);
+        }
+
+        .icon-container svg {
+            width: 20px;
+            height: 20px;
+            color: var(--green-500);
+        }
+    </style>
+    <script src="script.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="icon-container">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" width="20" height="20" fill="none"
+                    stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5">
+                    <circle cx="9" cy="9" r="7.25"></circle>
+                    <polyline points="5.75 9.25 7.75 11.25 12.25 6.75"></polyline>
+                </svg>
+            </div>
+            <h6 class="title">现在去真实网页上试试</h6>
+        </div>
+        <div class="content">
+            <p>你已成功打开扩展。要保存内容，请打开任意网页，并在那里启动扩展。</p>
+        </div>
+        <button id="dismiss-button" class="button">
+            <div class="button-content">
+                <p class="button-text">知道了</p>
+            </div>
+        </button>
+    </div>
+</body>
+
+</html>

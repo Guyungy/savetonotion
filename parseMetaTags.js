@@ -362,6 +362,75 @@ function applyXMetadata(data) {
         return;
     }
 }
+function applyLevelPlusMetadata(data) {
+    // level-plus.net (南+ South Plus) — phpwind 论坛
+    // 站点没有 og:/twitter: 标签，也没有 canonical，全部靠 DOM 取。
+    var _a, _b;
+    try {
+        var hostname = window.location.hostname.toLowerCase().replace(/^www\./, "");
+        if (hostname !== "level-plus.net" && !hostname.endsWith(".level-plus.net"))
+            return;
+        // 标题：优先读帖子标题节点，退回 <title> 并剥掉站点后缀
+        var subject = document.querySelector("h1#subject_tpc");
+        var subjectText = subject ? (subject.textContent || "").trim() : "";
+        if (subjectText) {
+            data.title = subjectText;
+        }
+        else if (data.title) {
+            data.title = data.title.replace(/\s*\|\s*[^|]*?(South Plus|南\+)[^|]*$/i, "").trim();
+        }
+        // 描述：读首帖正文（#read_tpc），压缩空白后截断
+        var body = document.querySelector("#read_tpc");
+        if (body) {
+            var raw = (body.textContent || "").replace(/\s+/g, " ").trim();
+            if (raw)
+                data.description = raw.length > 500 ? raw.slice(0, 500) + "..." : raw;
+            // 首贴无 og:image，用正文第一张图兜底（跳过表情/图标等小图）
+            if (!data.image) {
+                var imgs = body.querySelectorAll("img");
+                for (var k = 0; k < imgs.length; k++) {
+                    var cand = imgs[k].getAttribute("src") || imgs[k].getAttribute("data-src");
+                    if (!cand)
+                        continue;
+                    if (/^data:/i.test(cand))
+                        continue;
+                    if (/\/(smile|emoticon|face|icon)s?\//i.test(cand))
+                        continue;
+                    try { cand = new URL(cand, window.location.href).href; } catch (_e3) { continue; }
+                    data.image = cand;
+                    break;
+                }
+            }
+        }
+        // 作者：楼主链接（u.php?action-show-uid-...）在首帖左侧
+        var authorNode = document.querySelector('a[href*="action-show-uid-"] strong');
+        if (authorNode) {
+            var author = (authorNode.textContent || "").trim();
+            if (author) {
+                data.author = author;
+                // 拼进标题，方便在 Notion 里一眼看出谁发的
+                if (data.title)
+                    data.title = "".concat(data.title, " - ").concat(author);
+            }
+        }
+        // 发帖时间：<span title="发表于: YYYY-MM-DD HH:mm">
+        var timeNode = document.querySelector('span[title^="\u53d1\u8868\u4e8e"]');
+        var timeText = timeNode ? (timeNode.getAttribute("title") || "").replace(/^[^:]*:\s*/, "").trim() : "";
+        if (timeText)
+            data.publicationDate = timeText;
+        // URL 正规化：read.php?tid-2881354-uid-941515.html 这类装饰段要清掉，
+        // 只留 read.php?tid-<tid>.html
+        var m = window.location.pathname.match(/\/read\.php$/i);
+        if (m) {
+            var tid = (_b = (_a = window.location.search.match(/tid-(\d+)/)) === null || _a === void 0 ? void 0 : _a[1]) !== null && _b !== void 0 ? _b : null;
+            if (tid)
+                data.url = "".concat(window.location.origin, "/read.php?tid-").concat(tid, ".html");
+        }
+    }
+    catch (_e2) {
+        return;
+    }
+}
 function parseMetaTags() {
     var _a;
     let data = getMetadata(document, window.location);
@@ -388,6 +457,7 @@ function parseMetaTags() {
         }
     }
     applyXMetadata(data);
+    applyLevelPlusMetadata(data);
     return Object.assign(Object.assign({}, data), { domainName: window.location.hostname });
 }
 // @ts-ignore

@@ -24,6 +24,9 @@ yarn-error.log*
 *.orig
 *_scan.py
 _verify_*.js
+_control_*.js
+_site_probe.html
+_probe*.html
 
 # ---- 依赖（本项目为解包产物，无 node_modules 需求）----
 node_modules/

@@ -1,5 +1,6 @@
 /* Native React control; its identical bundled copy runs inside the Save.to form. */
-function StnFeishuControl() {
+function StnFeishuControl(props) {
+  props=props||{};
   var pair=o.useState({enabled:false,lastResult:null}),state=pair[0],setState=pair[1];
   var errors=o.useState(''),error=errors[0],setError=errors[1],loading=o.useState(false),busy=loading[0],setBusy=loading[1];
   async function ask(action,props) {
@@ -20,6 +21,15 @@ function StnFeishuControl() {
     finally{setBusy(false);}
   }
   var last=state.lastResult,message=error||(last&&last.state==='error'?last.permissionError||last.error||'飞书同步失败':last&&last.state==='saving'?'正在同步到飞书…':'');
+  if(props.resultOnly){
+    if(!last||!last.notionBlockId||!(props.notionUrl||'').replace(/-/g,'').includes(last.notionBlockId.replace(/-/g,'')))return null;
+    var validUrl=/^https:\/\/feishu\.cn\/docx\//.test(last.url||'');
+    return(0,sa.jsxs)('div',{'data-stn-feishu-result':'true',role:'status',style:{padding:16,display:'flex',flexDirection:'column',gap:8,maxWidth:340,overflowWrap:'anywhere',textAlign:'center'},children:[
+      (0,sa.jsx)('span',{children:last.state==='saving'?'正在同步到飞书…':last.state==='success'?'已同步到飞书':last.permissionError||last.error||'飞书同步未完成'}),
+      validUrl&&(0,sa.jsx)('a',{href:last.url,target:'_blank',rel:'noopener',style:{color:'#1769e0',textDecoration:'underline'},children:'打开飞书文档'}),
+      validUrl&&(0,sa.jsx)('span',{style:{fontSize:12,color:'#64748b'},children:last.url})
+    ]});
+  }
   return(0,sa.jsxs)('div',{'data-stn-feishu-control':'true',style:{display:'flex',flexDirection:'column',alignItems:'flex-end',fontSize:13,color:'#374151'},children:[
     (0,sa.jsxs)('div',{style:{display:'flex',alignItems:'center',gap:6},children:[
       (0,sa.jsxs)('label',{style:{display:'inline-flex',alignItems:'center',gap:6,cursor:'pointer',whiteSpace:'nowrap'},children:[

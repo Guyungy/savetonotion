@@ -90,12 +90,14 @@ async function feishuAfterNotion(capture, notionResult) {
     const config = (await chrome.storage.local.get(FEISHU_CONFIG_KEY))[FEISHU_CONFIG_KEY];
     if (config?.enabled !== true) return; // Existing settings migrate with the hook OFF.
     article = feishuArticleFromCapture(capture, notionResult);
-    await chrome.storage.local.set({ [FEISHU_STATUS_KEY]: { state: 'saving', title: article.title, at: Date.now() } });
+    article.notionBlockId = notionResult.notionBlockId || '';
+    article.sourceUrl = capture.context?.url || '';
+    await chrome.storage.local.set({ [FEISHU_STATUS_KEY]: { state: 'saving', title: article.title, notionBlockId: article.notionBlockId, sourceUrl: article.sourceUrl, at: Date.now() } });
     const result = await new StnFeishuApi.Client(config).save(article);
-    await chrome.storage.local.set({ [FEISHU_STATUS_KEY]: { state: result.partial || result.permissionError ? 'error' : 'success', ...result, title: article.title, at: Date.now() } });
+    await chrome.storage.local.set({ [FEISHU_STATUS_KEY]: { state: result.partial || result.permissionError ? 'error' : 'success', ...result, title: article.title, notionBlockId: article.notionBlockId, sourceUrl: article.sourceUrl, at: Date.now() } });
   } catch (error) {
     // A Feishu failure must never be reported as a failed Notion save.
-    await chrome.storage.local.set({ [FEISHU_STATUS_KEY]: { state: 'error', error: error.message, title: article?.title || '', at: Date.now() } }).catch(() => {});
+    await chrome.storage.local.set({ [FEISHU_STATUS_KEY]: { state: 'error', error: error.message, title: article?.title || '', notionBlockId: article?.notionBlockId || '', sourceUrl: article?.sourceUrl || '', at: Date.now() } }).catch(() => {});
   }
 }
 // Remove the former independent entry on upgrade as well as on worker startup.

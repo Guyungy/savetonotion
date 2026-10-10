@@ -51,7 +51,7 @@
     }
     async save(article) {
       const token = await this.token();
-      const converted = await this.request('/docx/v1/documents/blocks/convert', { content_type: 'html', content: article.html }, token);
+      const converted = await this.request('/docx/v1/documents/blocks/convert', { content_type: article.contentType || 'html', content: article.content || article.html }, token);
       if (!converted.blocks?.length || !converted.first_level_block_ids?.length) throw new Error('没有可保存的正文');
       const groups = batches(converted); // Validate before creating a document.
       const created = await this.request('/docx/v1/documents', { title: article.title.slice(0, 800), ...(this.config.folderToken ? { folder_token: this.config.folderToken } : {}) }, token);

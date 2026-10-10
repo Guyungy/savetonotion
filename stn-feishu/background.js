@@ -1,15 +1,20 @@
 importScripts('stn-feishu/api.js');
 const FEISHU_CONFIG_KEY = 'stnFeishuConfig';
-function openFeishu(tabId) {
-  chrome.tabs.create({ url: chrome.runtime.getURL('stn-feishu/index.html') + (Number.isInteger(tabId) ? `?tabId=${tabId}` : '') });
-}
+const FEISHU_STATUS_KEY = 'stnFeishuStatus';
+function openFeishu() { chrome.tabs.create({ url: chrome.runtime.getURL('stn-feishu/index.html') }); }
 async function feishuMessage(message, sender) {
   if (sender.id !== chrome.runtime.id) throw new Error('不允许访问飞书设置');
-  // The public popup can only open the private settings page; it cannot read secrets or save.
-  if (message.action === 'open') { openFeishu(sender.tab?.id); return {}; }
-  if (sender.url?.split(/[?#]/)[0] !== chrome.runtime.getURL('stn-feishu/index.html') || sender.tab?.url?.startsWith('http')) throw new Error('请在扩展的飞书保存页面中操作');
   const stored = (await chrome.storage.local.get(FEISHU_CONFIG_KEY))[FEISHU_CONFIG_KEY] || {};
-  if (message.action === 'config') return { appId: stored.appId || '', folderToken: stored.folderToken || '', hasSecret: !!stored.appSecret };
+  // Public popup exposes only hook state; credentials stay in the private settings page.
+  if (message.action === 'open') { openFeishu(); return {}; }
+  if (message.action === 'state') return { enabled: stored.enabled === true, configured: !!(stored.appId && stored.appSecret), lastResult: (await chrome.storage.local.get(FEISHU_STATUS_KEY))[FEISHU_STATUS_KEY] || null };
+  if (message.action === 'toggle') {
+    if (message.enabled === true && (!stored.appId || !stored.appSecret)) throw new Error('请先配置飞书应用');
+    await chrome.storage.local.set({ [FEISHU_CONFIG_KEY]: { ...stored, enabled: message.enabled === true } });
+    return { enabled: message.enabled === true };
+  }
+  if (sender.url?.split(/[?#]/)[0] !== chrome.runtime.getURL('stn-feishu/index.html') || sender.tab?.url?.startsWith('http')) throw new Error('请在扩展的飞书设置页面中操作');
+  if (message.action === 'config') return { appId: stored.appId || '', folderToken: stored.folderToken || '', hasSecret: !!stored.appSecret, enabled: stored.enabled === true };
   if (message.action === 'configure') {
     const appId = String(message.config?.appId || '').trim();
     const appSecret = String(message.config?.appSecret || (appId === stored.appId ? stored.appSecret : '') || '').trim();
@@ -21,50 +26,59 @@ async function feishuMessage(message, sender) {
     }
     if (!/^cli_[a-zA-Z0-9]+$/.test(appId) || !appSecret) throw new Error('请填写有效的 App ID 和 App Secret');
     if (folderToken && !/^[\w-]+$/.test(folderToken)) throw new Error('文件夹 token 格式不正确');
-    const config = { appId, appSecret, folderToken };
+    const config = { appId, appSecret, folderToken, enabled: message.config?.enabled === true };
     await new StnFeishuApi.Client(config).token();
     await chrome.storage.local.set({ [FEISHU_CONFIG_KEY]: config });
     return { ok: true };
   }
-  if (message.action === 'forget') { await chrome.storage.local.remove(FEISHU_CONFIG_KEY); return {}; }
-  if (message.action === 'capture') {
-    const tabId = Number(message.tabId);
-    const tab = await chrome.tabs.get(tabId);
-    if (!/^https?:\/\//.test(tab.url || '')) throw new Error('请从普通网页右键菜单打开保存到飞书');
-    if (message.selection) {
-      const [result] = await chrome.scripting.executeScript({ target: { tabId }, func: () => {
-        const selection = window.getSelection();
-        if (!selection?.rangeCount || selection.isCollapsed) return null;
-        const holder = document.createElement('div');
-        for (let i = 0; i < selection.rangeCount; i++) holder.append(selection.getRangeAt(i).cloneContents());
-        for (const node of holder.querySelectorAll('script,style,iframe,button,input')) node.remove();
-        for (const node of holder.querySelectorAll('[src],[href]')) for (const attr of ['src','href']) if (node.hasAttribute(attr)) {
-          try { node.setAttribute(attr, new URL(node.getAttribute(attr), location.href).href); } catch (_) {}
-        }
-        return { content: holder.innerHTML, title: document.title, url: location.href };
-      } });
-      if (!result?.result) throw new Error('请先在原网页选中文字或跨楼层内容，再重新提取选区');
-      return result.result;
-    }
-    const captured = await Promise.race([Wc(tabId, { v2: false }), new Promise((_, reject) => setTimeout(() => reject(new Error('网页提取超时，请刷新网页后重试')), 60000))]);
-    if (!captured?.content) throw new Error(captured?.error || '未提取到正文');
-    return { content: captured.content, title: captured.title || tab.title || '网页收藏', url: tab.url };
-  }
-  if (message.action === 'save') {
-    if (!stored.appId || !stored.appSecret) throw new Error('请先验证并保存应用设置');
-    const article = message.article;
-    if (!article?.html || !article.title || article.html.length > 10485760) throw new Error('正文为空或超过飞书长度限制');
-    return new StnFeishuApi.Client(stored).save(article);
-  }
+  if (message.action === 'forget') { await chrome.storage.local.remove([FEISHU_CONFIG_KEY, FEISHU_STATUS_KEY]); return {}; }
   throw new Error('未知的飞书操作');
 }
 function feishuDispatch(message, sender, reply) {
   feishuMessage(message, sender).then(data => reply({ ok: true, data }), error => reply({ ok: false, error: error.message }));
   return true;
 }
-function installFeishuMenu() {
-  chrome.contextMenus.create({ id: 'stn-save-feishu', title: '保存到飞书', contexts: ['page', 'selection', 'link', 'image'] }, () => void chrome.runtime.lastError);
+function feishuPlainText(value) {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) return value.map(item => Array.isArray(item) ? String(item[0] || '') : String(item || '')).join('');
+  return '';
 }
-installFeishuMenu();
-chrome.runtime.onInstalled.addListener(installFeishuMenu);
-chrome.contextMenus.onClicked.addListener((info, tab) => { if (info.menuItemId === 'stn-save-feishu') openFeishu(tab?.id); });
+function feishuArticleFromCapture(capture, notionResult) {
+  const payload = capture.payload;
+  const parts = [];
+  // Use only the exact submitted content, including selected ranges and list entries.
+  for (const property of Object.values(payload.properties || {})) {
+    const content = property?.content;
+    if (!content) continue;
+    for (const item of content.type === 'list' ? content.items || [] : [content]) {
+      if (item.markdown) parts.push(item.markdown);
+      else if (item.text) parts.push(feishuPlainText(item.text));
+    }
+  }
+  let title = feishuPlainText(payload.note) || feishuPlainText(notionResult.title) || '网页收藏';
+  if (Array.isArray(payload.note) && payload.note[0]?.[0] === '[🔗 link]' && payload.note[0]?.[1]?.[0]?.[0] === 'a') title = feishuPlainText(payload.note.slice(1)).replace(/^\s*—\s*/, '') || title;
+  let content = parts.join('\n\n') || title;
+  // Save original image links without Save.to's proprietary image-size annotation.
+  content = content.replace(/<<width[^>]*>>/g, '').replace(/!\[([^\]]*)\]\((https?:\/\/[^\s)]+)(?:\s+"[^"]*")?\)/g, '[图片：$1]($2)');
+  const url = capture.context?.url;
+  if (url && /^https?:\/\//.test(url)) content += `\n\n原文：<${url.replace(/[<>\r\n]/g, '')}>`;
+  return { title, content, contentType: 'markdown' };
+}
+async function feishuAfterNotion(capture, notionResult) {
+  // Only successful immediate Notion note/page writes reach this hook.
+  if (capture.payload?.type !== 'note' || capture.context?.executeDirectly !== true) return;
+  let article;
+  try {
+    const config = (await chrome.storage.local.get(FEISHU_CONFIG_KEY))[FEISHU_CONFIG_KEY];
+    if (config?.enabled !== true) return; // Existing settings migrate with the hook OFF.
+    article = feishuArticleFromCapture(capture, notionResult);
+    await chrome.storage.local.set({ [FEISHU_STATUS_KEY]: { state: 'saving', title: article.title, at: Date.now() } });
+    const result = await new StnFeishuApi.Client(config).save(article);
+    await chrome.storage.local.set({ [FEISHU_STATUS_KEY]: { state: result.partial ? 'error' : 'success', ...result, title: article.title, at: Date.now() } });
+  } catch (error) {
+    // A Feishu failure must never be reported as a failed Notion save.
+    await chrome.storage.local.set({ [FEISHU_STATUS_KEY]: { state: 'error', error: error.message, title: article?.title || '', at: Date.now() } }).catch(() => {});
+  }
+}
+// Remove the former independent entry on upgrade as well as on worker startup.
+chrome.contextMenus.remove('stn-save-feishu', () => void chrome.runtime.lastError);

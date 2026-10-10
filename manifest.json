@@ -37,7 +37,7 @@
    "content_security_policy": {
       "extension_pages": "script-src 'self'; object-src 'self';"
    },
-   "description": "Save the Web to Notion or Feishu · 中文界面与网站适配",
+   "description": "Save the Web to Notion · 可选飞书同步、中文界面与网站适配",
    "host_permissions": [
       "https://*.notion.so/*",
       "https://*.notion.com/*",

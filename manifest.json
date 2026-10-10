@@ -37,8 +37,12 @@
    "content_security_policy": {
       "extension_pages": "script-src 'self'; object-src 'self';"
    },
-   "description": "Save the Web to Notion",
-   "host_permissions": [ "https://*.notion.so/*", "https://*.notion.com/*" ],
+   "description": "Save the Web to Notion or Feishu · 中文界面与网站适配",
+   "host_permissions": [
+      "https://*.notion.so/*",
+      "https://*.notion.com/*",
+      "https://open.feishu.cn/*"
+   ],
    "icons": {
       "128": "assets/icon128.png",
       "48": "assets/icon48.png"
@@ -46,13 +50,45 @@
    "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAoI9oZJCqKl+7jUAHqyCtHN7BCdFruvQQsRGF0e1RClgzA2q0CoDk7h0QsZxLARZuC3k54aV0241vSCSlFLyG29LcC+Ri0VZHA91MRZui+wFb4abEU4YN8D8KYShG+kwfDMfvSahpdCZNiSfKjc94wjCbIKWulnDXDiF2BEuYTbSwMaXC8D9jflaEwtCfIL3N+ZPewAiIgfOk3rECxBCBp+sOqf/gbFTGN4xbIG3yDBAzBJSPFUPsuj2U1amVpDX63CoW33ZLh9GbicqGGluymK5iKNEWQLL2OGXanD+bBVaOynqJitoyV08XspcskR/mRW5SqoKczMneq+JH0dlBJQIDAQAB",
    "manifest_version": 3,
    "name": "Save.to - formerly Save to Notion",
-   "optional_host_permissions": [ "https://*.licdn.com/*", "\u003Call_urls>" ],
-   "optional_permissions": [ "tabs", "webNavigation" ],
-   "permissions": [ "activeTab", "storage", "cookies", "scripting", "contextMenus", "unlimitedStorage" ],
+   "optional_host_permissions": [
+      "https://*.licdn.com/*",
+      "<all_urls>"
+   ],
+   "optional_permissions": [
+      "tabs",
+      "webNavigation"
+   ],
+   "permissions": [
+      "activeTab",
+      "storage",
+      "cookies",
+      "scripting",
+      "contextMenus",
+      "unlimitedStorage"
+   ],
    "update_url": "https://clients2.google.com/service/update2/crx",
    "version": "4.3.14",
-   "web_accessible_resources": [ {
-      "matches": [ "\u003Call_urls>" ],
-      "resources": [ "popup/index.html", "modal/modal.html", "toast/toast.html", "highlightTooltip/highlightTooltip.html", "restricted_popup/index.html", "restricted_popup/script.js", "onboarding_guide_popup/index.html", "onboarding_guide_popup/script.js", "welcome/welcome.html", "assets/*.js", "stn-i18n/dict.js", "stn-i18n/engine.js" ]
-   } ]
+   "web_accessible_resources": [
+      {
+         "matches": [
+            "<all_urls>"
+         ],
+         "resources": [
+            "popup/index.html",
+            "modal/modal.html",
+            "toast/toast.html",
+            "highlightTooltip/highlightTooltip.html",
+            "restricted_popup/index.html",
+            "restricted_popup/script.js",
+            "onboarding_guide_popup/index.html",
+            "onboarding_guide_popup/script.js",
+            "welcome/welcome.html",
+            "assets/*.js",
+            "stn-i18n/dict.js",
+            "stn-i18n/engine.js",
+            "stn-feishu/entry.js"
+         ]
+      }
+   ],
+   "options_page": "stn-feishu/index.html"
 }

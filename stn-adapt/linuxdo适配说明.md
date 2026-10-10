@@ -27,6 +27,7 @@ Discourse 会随滚动加载和卸载楼层，所以“当前页面”指保存�
 ```sh
 node stn-adapt/test-linuxdo.js
 node stn-adapt/test-linuxdo-comments.js
+node stn-adapt/test-linuxdo-format.js
 node stn-adapt/test-discuz.js
 node stn-adapt/test-levelplus.js
 node stn-adapt/verify-extension-loads.js
@@ -39,3 +40,7 @@ node stn-adapt/verify-extension-loads.js
 已在登录的真实话题页面验证整页 HTML / Markdown、指定第 57 楼、仅展开评论区域；确认第 65 楼评论保留作者 `sauterne` 及回复 #52 的关系。
 
 本次验证未写入 Notion。使用本地修改前，请在 Chrome 扩展管理中重新加载此解包扩展，再刷新目标网页。自动升级可能覆盖本地修改。
+
+## 复杂格式修复
+
+话题 1923706 使用大量折叠说明、代码和表格。保存时将 `details/summary` 转为静态正文及加粗引用标题，保留折叠块中已存在的正文；这不涉及自动加载折叠的楼层评论。灯箱图片移除外层链接，代码工具栏清理后保留代码原始反引号、缩进与换行，围栏长度根据代码内容调整。格式回归快照覆盖 31 个折叠标题、30 段代码及 2 张表格。

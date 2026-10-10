@@ -1,0 +1,15 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>保存到飞书 · Save.to</title><link rel="stylesheet" href="style.css"><script defer src="page.js"></script></head><body><main>
+<h1>保存到飞书</h1><p>将网页正文保存为飞书云文档。Linux.do 保存当前页面已加载的楼层和评论。</p>
+<details open id="settings"><summary>飞书应用设置</summary><form id="config">
+<label>App ID<input id="appId" autocomplete="off" required placeholder="cli_…"></label>
+<label>App Secret<input id="appSecret" type="password" autocomplete="off" placeholder="首次填写；已有密钥时可留空"></label>
+<label>目标文件夹链接或 token（可选）<input id="folderToken" autocomplete="off" placeholder="https://…feishu.cn/drive/folder/…"></label>
+<p>需要企业自建应用，并开通云文档创建、编辑及内容转换权限。目标文件夹须允许应用访问。未填文件夹时，文档归应用所有，你的账号可能无法打开。</p>
+<p>密钥只存于此扩展的本地设置，不会同步至 GitHub。此存储不加密，请仅在可信设备上使用。</p>
+<button type="submit">验证并保存设置</button> <button type="button" id="forget">清除应用设置</button>
+</form></details>
+<section><h2>保存内容</h2><label>文档标题<input id="title"></label><div class="actions"><button id="capture">提取当前页面</button><button id="selection">提取网页文字选区</button></div>
+<p>选区模式需先在原网页选中文字，可跨楼层选择。图片保存为原图链接；标题、段落、列表、引用、代码和表格由飞书转换。</p>
+<iframe id="preview" sandbox="" title="正文预览"></iframe><button id="save" disabled>保存到飞书</button></section>
+<p id="status" role="status" aria-live="polite"></p><a id="result" target="_blank" rel="noopener" hidden>打开飞书文档</a>
+</main></body></html>

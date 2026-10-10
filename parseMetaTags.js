@@ -577,6 +577,21 @@ function getLinuxDoArticle(doc, pageUrl, options) {
     function clean(node) {
         var clone = node.cloneNode(true);
         clone.querySelectorAll("script,style,button,svg,.lightbox .meta,.avatar,.site-icon,.anchor,.cooked-selection-barrier").forEach(function(el) { el.remove(); });
+        // Discourse UI wrappers have no portable meaning in Notion/Markdown.
+        clone.querySelectorAll(".codeblock-button-wrapper").forEach(function(el) { el.remove(); });
+        clone.querySelectorAll("details").forEach(function(details) {
+            var container = doc.createElement("div");
+            Array.from(details.childNodes).forEach(function(child) {
+                if (child.nodeType === 1 && child.tagName === "SUMMARY") {
+                    var label = doc.createElement("blockquote");
+                    var paragraph = doc.createElement("p");
+                    var strong = doc.createElement("strong");
+                    strong.textContent = child.textContent.trim();
+                    paragraph.appendChild(strong); label.appendChild(paragraph); container.appendChild(label);
+                } else container.appendChild(child);
+            });
+            details.replaceWith(container);
+        });
         var images = Array.from(clone.querySelectorAll("img"));
         if (clone.matches && clone.matches("img")) images.unshift(clone);
         images.forEach(function(img) {
@@ -584,6 +599,10 @@ function getLinuxDoArticle(doc, pageUrl, options) {
             var src = lightbox ? lightbox.getAttribute("href") : (img.getAttribute("src") || img.getAttribute("data-src"));
             if (src) { try { img.setAttribute("src", new URL(src, pageUrl).href); } catch (e) {} }
             if (lightbox) { img.removeAttribute("srcset"); img.removeAttribute("sizes"); }
+        });
+        clone.querySelectorAll("a.lightbox").forEach(function(link) {
+            var image = link.querySelector("img");
+            if (image) link.replaceWith(image);
         });
         var links = Array.from(clone.querySelectorAll("a[href]"));
         if (clone.matches && clone.matches("a[href]")) links.unshift(clone);

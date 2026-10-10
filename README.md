@@ -81,7 +81,7 @@ Linux.do 测试使用离线真实 DOM 快照及模拟接口，不要求登录，
 
 ## 飞书可选同步钩子
 
-飞书是 **Notion 保存成功后的可选同步钩子**，默认关闭。继续使用原来的 Notion 保存入口和目标配置；原保存面板在保存控件旁提供 **同步到飞书** 复选框及 **设置**。不再提供独立的飞书右键菜单、保存按钮或第二套正文提取流程。
+飞书是 **Notion 保存成功后的可选同步钩子**，默认关闭。继续使用原来的 Notion 保存入口和目标配置；原保存面板在“保存到 Notion”按钮上方提供 **同步到飞书** 复选框及 **设置**，使用原生保存控件中的固定占位，避免被弹窗布局裁切。不再提供独立的飞书右键菜单、保存按钮或第二套正文提取流程。
 
 1. 点击“设置”，填写飞书企业自建应用的 **App ID / App Secret** 以及可选的云空间文件夹链接（`/drive/folder/…`）或 token。
 2. 在[飞书开放平台](https://open.feishu.cn/app)启用应用机器人能力，开通云文档创建、编辑和“文本内容转换为云文档块”权限，并发布应用版本。相关接口：[文档创建](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/create)、[内容转换](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document/convert)、[嵌套块写入](https://open.feishu.cn/api-explorer?project=docx&resource=document.block.descendant&apiName=create&version=v1)。新增权限后重新发布并获得管理员批准（如需要）。

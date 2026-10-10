@@ -54,12 +54,30 @@ const root = path.resolve(__dirname, '..');
     const popup=await context.newPage();await popup.goto(`chrome-extension://${id}/popup/index.html`);
     await popup.getByLabel('同步到飞书').waitFor();assert.equal(await popup.getByLabel('同步到飞书').isChecked(),true);
     assert.equal(await popup.getByRole('button',{name:'保存到飞书',exact:true}).count(),0);
+    // A viewport-sized React panel clips nodes appended outside its footer.
+    // Verify mounting into the actual save-controls slot at compact extension size.
+    assert.match(fs.readFileSync(path.join(root,'popup/static/js/main.js'),'utf8'), /data-stn-feishu-hook-slot/);
+    await popup.setViewportSize({width:420,height:560});
+    const drawPanel = () => {
+      const panel=document.createElement('div');panel.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;background:white';
+      const header=document.createElement('div');header.textContent='保存页面';header.style.cssText='padding:20px;flex-shrink:0';
+      const content=document.createElement('div');content.style.cssText='flex:1;min-height:0;overflow:auto';const large=document.createElement('div');large.style.height='1200px';content.append(large);
+      const footer=document.createElement('div');footer.style.cssText='padding:16px;flex-shrink:0';
+      const slot=document.createElement('div');slot.dataset.stnFeishuHookSlot='true';
+      const save=document.createElement('button');save.textContent='保存到 Notion';save.style.cssText='height:40px;width:100%';footer.append(slot,save);panel.append(header,content,footer);document.getElementById('root').replaceChildren(panel);
+    };
+    await popup.evaluate(drawPanel);
+    await popup.waitForFunction(()=>document.querySelector('[data-stn-feishu-hook-slot] #stn-feishu-hook'));
+    let bounds=await popup.locator('#stn-feishu-hook').boundingBox();assert(bounds.y>=0 && bounds.y+bounds.height<=560);
+    await popup.evaluate(drawPanel); // Re-render must remount without losing the hook.
+    await popup.waitForFunction(()=>document.querySelector('[data-stn-feishu-hook-slot] #stn-feishu-hook'));
+    bounds=await popup.locator('#stn-feishu-hook').boundingBox();assert(bounds.y>=0 && bounds.y+bounds.height<=560);
     await popup.getByLabel('同步到飞书').uncheck();await page.waitForFunction(async()=>!(await ask('state')).enabled);
     const after=await worker.evaluate(()=>feishuCalls.length);
     assert.equal(await worker.evaluate(()=>M.submitCapture(capture,{}, {onProgress(){}})),true);
     await worker.evaluate(()=>new Promise(resolve=>setTimeout(resolve,100)));assert.equal(await worker.evaluate(()=>feishuCalls.length),after);
     await page.locator('#forget').click();await page.waitForFunction(()=>document.getElementById('status').textContent.includes('已清除'));
     assert.equal((await page.evaluate(()=>ask('config'))).hasSecret,false);
-    console.log('PASS actual Notion save hook: OFF by default, exact selected content/title, success-only, isolated Feishu failure, inline toggle, private credentials, tenant-only sharing, access repair, clearing');
+    console.log('PASS actual Notion save hook: OFF by default, exact selected content/title, success-only, isolated Feishu failure, inline toggle, private credentials, tenant-only sharing, access repair, compact viewport visibility, React remount, clearing');
   } finally {if(context)await context.close();fs.rmSync(temp,{recursive:true,force:true});}
 })().catch(error=>{console.error(error);process.exitCode=1;});

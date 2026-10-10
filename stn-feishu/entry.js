@@ -20,7 +20,7 @@
       status.replaceChildren();
       const last = state.lastResult;
       if (!last) return;
-      status.textContent = last.state === 'saving' ? '正在同步到飞书…' : last.state === 'success' ? '最近一次同步已完成' : `Notion 已保存，飞书同步失败：${last.error || '正文未完全写入'}`;
+      status.textContent = last.state === 'saving' ? '正在同步到飞书…' : last.state === 'success' ? '最近一次同步已完成' : `Notion 已保存，飞书同步失败：${last.permissionError || last.error || '正文未完全写入'}`;
       if (last.url && /^https:\/\/feishu\.cn\/docx\//.test(last.url)) {
         const link = document.createElement('a');link.href=last.url;link.target='_blank';link.rel='noopener';link.textContent=' 打开飞书文档';status.append(link);
       }

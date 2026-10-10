@@ -31,9 +31,9 @@
   }
   class Client {
     constructor(config, fetcher = fetch) { this.config = config; this.fetcher = fetcher; }
-    async request(path, body, token) {
+    async request(path, body, token, method = 'POST') {
       const response = await this.fetcher(BASE + path, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        method, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify(body), signal: AbortSignal.timeout(60000)
       });
       const result = await response.json();
@@ -49,6 +49,16 @@
       if (!data.tenant_access_token) throw new Error('飞书没有返回应用访问凭证');
       return data.tenant_access_token;
     }
+    async shareDocument(documentId, token) {
+      return this.request(`/drive/v2/permissions/${encodeURIComponent(documentId)}/public?type=docx`, {
+        external_access_entity: 'closed', link_share_entity: 'tenant_editable'
+      }, token, 'PATCH');
+    }
+    async repairAccess(documentId) {
+      const token = await this.token();
+      await this.shareDocument(documentId, token);
+      return { url: `https://feishu.cn/docx/${encodeURIComponent(documentId)}`, accessConfigured: true };
+    }
     async save(article) {
       const token = await this.token();
       const converted = await this.request('/docx/v1/documents/blocks/convert', { content_type: article.contentType || 'html', content: article.content || article.html }, token);
@@ -58,14 +68,18 @@
       const document = created.document;
       if (!document?.document_id) throw new Error('飞书没有返回文档 ID');
       const url = `https://feishu.cn/docx/${encodeURIComponent(document.document_id)}`;
+      const result = { url, partial: false };
       try {
         for (let i = 0; i < groups.length; i++) {
           if (i) await sleep(400);
           // Do not automatically retry writes: a lost response could duplicate content.
           await this.request(`/docx/v1/documents/${document.document_id}/blocks/${document.document_id}/descendant?document_revision_id=-1`, groups[i], token);
         }
-      } catch (error) { return { url, partial: true, error: error.message }; }
-      return { url, partial: false };
+      } catch (error) { result.partial = true; result.error = error.message; }
+      // Access is part of completion, including documents with partially written bodies.
+      try { await this.shareDocument(document.document_id, token); result.accessConfigured = true; }
+      catch (error) { result.accessConfigured = false; result.permissionError = `文档已创建，但企业内编辑权限设置失败：${error.message}`; }
+      return result;
     }
   }
   root.StnFeishuApi = { Client, batches };

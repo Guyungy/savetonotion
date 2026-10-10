@@ -20,12 +20,18 @@ $('config').addEventListener('submit', event => {
   });
 });
 $('forget').onclick=()=>run(async()=>{await ask('forget');$('appId').value='';$('appSecret').value='';$('folderToken').value='';$('enabled').checked=false;$('result').hidden=true;status('已清除应用设置，飞书同步已关闭。');});
+$('repairAccess').onclick=()=>run(async()=>{
+  status('正在设置企业内编辑权限…');
+  const result=await ask('repairAccess',{url:$('repairUrl').value});
+  $('result').href=result.url;$('result').hidden=false;
+  status('已设置为企业内获得链接的人可编辑，重新打开文档即可。');
+});
 (async()=>{
   try {
     const config=await ask('config');$('appId').value=config.appId;$('folderToken').value=config.folderToken;$('enabled').checked=config.enabled;
     if(config.hasSecret)$('appSecret').placeholder='已保存密钥；留空保留现有密钥';
     const {lastResult}=await ask('state');
     if(lastResult?.url && /^https:\/\/feishu\.cn\/docx\//.test(lastResult.url)){$('result').href=lastResult.url;$('result').hidden=false;}
-    if(lastResult?.state==='error')status(`最近一次飞书同步失败：${lastResult.error || '正文未完全写入'}。Notion 已保存。`);
+    if(lastResult?.state==='error')status(`最近一次飞书同步失败：${lastResult.permissionError || lastResult.error || '正文未完全写入'}。Notion 已保存。`);
   } catch(error){status(error.message);}
 })();

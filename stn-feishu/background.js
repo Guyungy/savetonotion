@@ -31,6 +31,24 @@ async function feishuMessage(message, sender) {
     await chrome.storage.local.set({ [FEISHU_CONFIG_KEY]: config });
     return { ok: true };
   }
+  if (message.action === 'repairAccess') {
+    if (!stored.appId || !stored.appSecret) throw new Error('请先配置飞书应用');
+    const previous = (await chrome.storage.local.get(FEISHU_STATUS_KEY))[FEISHU_STATUS_KEY];
+    const target = String(message.url || previous?.url || '').trim();
+    let id;
+    try {
+      const url = new URL(target);
+      if (url.protocol === 'https:' && /(^|\.)feishu\.cn$/.test(url.hostname)) id = url.pathname.match(/^\/docx\/([a-zA-Z0-9]+)\/?$/)?.[1];
+    } catch (_) {}
+    if (!id) throw new Error('没有可修复的文档，请填写 Claw 应用创建的飞书文档链接（/docx/…）');
+    const result = await new StnFeishuApi.Client(stored).repairAccess(id);
+    if (previous?.url?.split(/[?#]/)[0] === result.url) {
+      const updated = { ...previous, accessConfigured: true, at: Date.now() };delete updated.permissionError;
+      updated.state = updated.partial || updated.error ? 'error' : 'success';
+      await chrome.storage.local.set({ [FEISHU_STATUS_KEY]: updated });
+    }
+    return result;
+  }
   if (message.action === 'forget') { await chrome.storage.local.remove([FEISHU_CONFIG_KEY, FEISHU_STATUS_KEY]); return {}; }
   throw new Error('未知的飞书操作');
 }
@@ -74,7 +92,7 @@ async function feishuAfterNotion(capture, notionResult) {
     article = feishuArticleFromCapture(capture, notionResult);
     await chrome.storage.local.set({ [FEISHU_STATUS_KEY]: { state: 'saving', title: article.title, at: Date.now() } });
     const result = await new StnFeishuApi.Client(config).save(article);
-    await chrome.storage.local.set({ [FEISHU_STATUS_KEY]: { state: result.partial ? 'error' : 'success', ...result, title: article.title, at: Date.now() } });
+    await chrome.storage.local.set({ [FEISHU_STATUS_KEY]: { state: result.partial || result.permissionError ? 'error' : 'success', ...result, title: article.title, at: Date.now() } });
   } catch (error) {
     // A Feishu failure must never be reported as a failed Notion save.
     await chrome.storage.local.set({ [FEISHU_STATUS_KEY]: { state: 'error', error: error.message, title: article?.title || '', at: Date.now() } }).catch(() => {});

@@ -27,9 +27,15 @@ const converted = { first_level_block_ids: ['table', 'p'], blocks: [
   assert.equal(calls[1].headers.Authorization,'Bearer token');
   assert.equal(calls[2].body.folder_token,'folder');
   assert.equal(calls[3].body.index,-1);
+  assert.equal(calls[4].method,'PATCH');
+  assert.deepEqual(calls[4].body,{external_access_entity:'closed',link_share_entity:'tenant_editable'});
+  assert.match(calls[4].url,/drive\/v2\/permissions\/doc\/public\?type=docx$/);
   client.fetcher = async (url) => ({ok: true, json: async () => url.includes('/descendant') ? {code:1770001,msg:'write failed'} : url.includes('/internal') ? {code:0,tenant_access_token:'token'} : {code:0,data:url.endsWith('/convert')?converted:{document:{document_id:'partial'}}}});
   const partial = await client.save({title:'失败测试',html:'<p>内容</p>'}); assert.equal(partial.partial,true); assert.match(partial.url,/partial/);
+  client.fetcher = async (url) => ({ok:true,json:async()=>url.includes('/permissions/')?{code:999,msg:'permission denied'}:url.includes('/internal')?{code:0,tenant_access_token:'token'}:{code:0,data:url.endsWith('/convert')?converted:{document:{document_id:'restricted'}}}});
+  const restricted=await client.save({title:'权限失败',html:'<p>内容</p>'});
+  assert.equal(restricted.partial,false);assert.equal(restricted.accessConfigured,false);assert.match(restricted.permissionError,/权限设置失败/);assert.match(restricted.url,/restricted/);
   client.fetcher = async () => ({ok:false,json:async()=>({code:999,msg:'secret denied'})});
   await assert.rejects(client.token(),error => !error.message.includes('secret') && error.message.includes('999'));
-  console.log('PASS Feishu API: tree order, tables, batching, auth, folder, partial writes and secret redaction');
+  console.log('PASS Feishu API: tree order, tables, batching, auth, folder, partial writes, tenant-only editing, sharing failures and secret redaction');
 })().catch(error => {console.error(error);process.exitCode=1});

@@ -4,8 +4,8 @@
 <label>App ID<input id="appId" autocomplete="off" required placeholder="cli_…"></label>
 <label>App Secret<input id="appSecret" type="password" autocomplete="off" placeholder="首次填写；已有密钥时可留空"></label>
 <label>目标文件夹链接或 token（可选）<input id="folderToken" autocomplete="off" placeholder="https://…feishu.cn/drive/folder/…"></label>
-<p>企业自建应用需要云文档创建、编辑和内容转换权限，目标文件夹须允许应用访问。未填文件夹时文档归应用所有，你的账号可能无法打开。</p>
+<p>企业自建应用需要云文档创建、编辑和内容转换权限，目标文件夹须允许应用访问。未填文件夹时文档归应用所有。保存后会自动设置为“企业内获得链接的人可编辑”，并关闭对外分享。</p>
 <p>密钥仅存扩展本地，不加密，不提交至 GitHub。图片以原图链接保存。飞书失败会单独提示，Notion 的成功结果不受影响。</p>
 <button type="submit">验证并保存设置</button> <button type="button" id="forget">清除应用设置</button></form>
-<p id="status" role="status" aria-live="polite"></p><a id="result" target="_blank" rel="noopener" hidden>打开最近的飞书文档</a>
+<section><h2>修复已有文档权限</h2><p>旧版本创建的文档可能需要申请权限。可直接修复最近一次保存的文档，或填写本应用创建的文档链接。</p><label>飞书文档链接（留空使用最近一次文档）<input id="repairUrl" placeholder="https://…feishu.cn/docx/…"></label><button type="button" id="repairAccess">设置企业内可编辑</button></section><p id="status" role="status" aria-live="polite"></p><a id="result" target="_blank" rel="noopener" hidden>打开最近的飞书文档</a>
 </main></body></html>

@@ -85,8 +85,7 @@
             "welcome/welcome.html",
             "assets/*.js",
             "stn-i18n/dict.js",
-            "stn-i18n/engine.js",
-            "stn-feishu/entry.js"
+            "stn-i18n/engine.js"
          ]
       }
    ],

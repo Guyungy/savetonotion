@@ -5,8 +5,17 @@ const root = path.resolve(__dirname, '..');
 (async () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(),'stn-feishu-hook-test-'));let context;
   try {
+    const extension=path.join(temp,'extension');fs.mkdirSync(extension);
+    for(const entry of fs.readdirSync(root))if(entry!=='.git'&&entry!=='popup')fs.symlinkSync(path.join(root,entry),path.join(extension,entry));
+    fs.cpSync(path.join(root,'popup'),path.join(extension,'popup'),{recursive:true});
+    const mainPath=path.join(extension,'popup/static/js/main.js');
+    const main=fs.readFileSync(mainPath,'utf8'),component=fs.readFileSync(path.join(root,'stn-feishu/control-component.js'),'utf8').split('function StnFeishuControl')[1];
+    assert(main.includes('function StnFeishuControl'+component));
+    // Test-only export renders the actual bundled Fields component and its real checkbox.
+    const expose="globalThis.__stnRenderFields=function(props){var host=document.getElementById('stn-native-fields-test');if(!host){host=document.createElement('div');host.id='stn-native-fields-test';host.style.cssText='position:fixed;left:16px;right:16px;top:100px;padding:12px;background:white;z-index:5000';document.body.append(host);}a.render((0,sa.jsx)(Fge,props),host);};";
+    fs.writeFileSync(mainPath,main.replace('function Fge(e){',expose+'function Fge(e){'));
     context = await chromium.launchPersistentContext(path.join(temp,'profile'), { executablePath: process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless:true, viewport:{width:1280,height:1600},ignoreDefaultArgs:['--disable-extensions'],args:['--enable-unsafe-extension-debugging'] });
-    const cdp = await context.browser().newBrowserCDPSession();const {id} = await cdp.send('Extensions.loadUnpacked',{path:root});
+    const cdp = await context.browser().newBrowserCDPSession();const {id} = await cdp.send('Extensions.loadUnpacked',{path:extension});
     const page = await context.newPage();await page.goto(`chrome-extension://${id}/stn-feishu/index.html`);
     const worker = context.serviceWorkers().find(w=>w.url().includes(id)) || await context.waitForEvent('serviceworker');
     assert.equal(await page.locator('#enabled').isChecked(),false);
@@ -52,32 +61,22 @@ const root = path.resolve(__dirname, '..');
     assert.equal((await page.evaluate(()=>ask('state'))).lastResult.state,'success');
     const denied=await worker.evaluate(async()=>{try{await feishuMessage({action:'config'},{id:chrome.runtime.id,url:'https://linux.do',tab:{url:'https://linux.do'}});return false;}catch(_){return true;}});assert(denied);
     const popup=await context.newPage();await popup.goto(`chrome-extension://${id}/popup/index.html`);
+    await popup.waitForFunction(()=>typeof __stnRenderFields==='function');
+    await popup.setViewportSize({width:420,height:560});
+    await popup.evaluate(()=>{window.moreFieldsClicks=0;__stnRenderFields({text:'3 more fields',hide:false,isExpanded:false,onClick:()=>{moreFieldsClicks++;}});});
     await popup.getByLabel('同步到飞书').waitFor();assert.equal(await popup.getByLabel('同步到飞书').isChecked(),true);
     assert.equal(await popup.getByRole('button',{name:'保存到飞书',exact:true}).count(),0);
-    // A viewport-sized React panel clips nodes appended outside its footer.
-    // Verify mounting into the actual save-controls slot at compact extension size.
-    assert.match(fs.readFileSync(path.join(root,'popup/static/js/main.js'),'utf8'), /data-stn-feishu-hook-slot/);
-    await popup.setViewportSize({width:420,height:560});
-    const drawPanel = () => {
-      const panel=document.createElement('div');panel.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;background:white';
-      const header=document.createElement('div');header.textContent='保存页面';header.style.cssText='padding:20px;flex-shrink:0';
-      const content=document.createElement('div');content.style.cssText='flex:1;min-height:0;overflow:auto';const large=document.createElement('div');large.style.height='1200px';content.append(large);
-      const footer=document.createElement('div');footer.style.cssText='padding:16px;flex-shrink:0';
-      const slot=document.createElement('div');slot.dataset.stnFeishuHookSlot='true';
-      const save=document.createElement('button');save.textContent='保存到 Notion';save.style.cssText='height:40px;width:100%';footer.append(slot,save);panel.append(header,content,footer);document.getElementById('root').replaceChildren(panel);
-    };
-    await popup.evaluate(drawPanel);
-    await popup.waitForFunction(()=>document.querySelector('[data-stn-feishu-hook-slot] #stn-feishu-hook'));
-    let bounds=await popup.locator('#stn-feishu-hook').boundingBox();assert(bounds.y>=0 && bounds.y+bounds.height<=560);
-    await popup.evaluate(drawPanel); // Re-render must remount without losing the hook.
-    await popup.waitForFunction(()=>document.querySelector('[data-stn-feishu-hook-slot] #stn-feishu-hook'));
-    bounds=await popup.locator('#stn-feishu-hook').boundingBox();assert(bounds.y>=0 && bounds.y+bounds.height<=560);
+    const fieldBounds=await popup.getByRole('button',{name:'3 more fields',exact:true}).boundingBox();
+    let bounds=await popup.getByLabel('同步到飞书').boundingBox();assert(bounds.y>=0&&bounds.y+bounds.height<=560);assert(Math.abs(bounds.y-fieldBounds.y)<35);assert(bounds.x>fieldBounds.x+fieldBounds.width);
+    await popup.getByRole('button',{name:'3 more fields',exact:true}).click();assert.equal(await popup.evaluate(()=>moreFieldsClicks),1);
+    await popup.evaluate(()=>__stnRenderFields({text:'3 more fields',hide:false,isExpanded:true,onClick:()=>{moreFieldsClicks++;}}));
+    assert.equal(await popup.getByLabel('同步到飞书').isChecked(),true);
     await popup.getByLabel('同步到飞书').uncheck();await page.waitForFunction(async()=>!(await ask('state')).enabled);
     const after=await worker.evaluate(()=>feishuCalls.length);
     assert.equal(await worker.evaluate(()=>M.submitCapture(capture,{}, {onProgress(){}})),true);
     await worker.evaluate(()=>new Promise(resolve=>setTimeout(resolve,100)));assert.equal(await worker.evaluate(()=>feishuCalls.length),after);
     await page.locator('#forget').click();await page.waitForFunction(()=>document.getElementById('status').textContent.includes('已清除'));
     assert.equal((await page.evaluate(()=>ask('config'))).hasSecret,false);
-    console.log('PASS actual Notion save hook: OFF by default, exact selected content/title, success-only, isolated Feishu failure, inline toggle, private credentials, tenant-only sharing, access repair, compact viewport visibility, React remount, clearing');
+    console.log('PASS actual Notion save hook: OFF by default, exact selected content/title, success-only, isolated Feishu failure, inline toggle, private credentials, tenant-only sharing, access repair, native more-fields row, compact viewport visibility, React rerender, clearing');
   } finally {if(context)await context.close();fs.rmSync(temp,{recursive:true,force:true});}
 })().catch(error=>{console.error(error);process.exitCode=1;});

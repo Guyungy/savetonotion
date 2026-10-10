@@ -34,7 +34,7 @@ for _ in range(4):
         break
     ROOT = os.path.dirname(ROOT)
 
-MAIN = os.path.join(ROOT, "popup", "static", "js", "main.js")
+MAIN = os.path.join(ROOT, "popup", "static", "js", "main-feishu.js")
 OPTS = os.path.join(ROOT, "options.js")
 
 # (文件, 说明, 原始串, 替换串, 期望命中次数)

@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, '..');
     const extension=path.join(temp,'extension');fs.mkdirSync(extension);
     for(const entry of fs.readdirSync(root))if(entry!=='.git'&&entry!=='popup')fs.symlinkSync(path.join(root,entry),path.join(extension,entry));
     fs.cpSync(path.join(root,'popup'),path.join(extension,'popup'),{recursive:true});
-    const mainPath=path.join(extension,'popup/static/js/main.js');
+    const mainPath=path.join(extension,'popup/static/js/main-feishu.js');
     const main=fs.readFileSync(mainPath,'utf8'),component=fs.readFileSync(path.join(root,'stn-feishu/control-component.js'),'utf8').split('function StnFeishuControl')[1];
     assert(main.includes('function StnFeishuControl'+component));
     // Test-only export renders the actual bundled Fields component and its real checkbox.

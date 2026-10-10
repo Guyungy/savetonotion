@@ -14,7 +14,7 @@
 3. 点击「加载已解压的扩展程序」，选择包含 `manifest.json` 的仓库根目录。
 4. 保存到 Notion 时，按照扩展界面提示完成账号连接；如需同步到飞书，参考下方「飞书可选同步钩子」，在原保存面板启用并配置。
 
-更新本地代码后，在扩展管理页面点击重新加载，再刷新要保存的网页。已安装商店版时，使用扩展名称和 ID 核对当前加载版本，避免混用。
+更新本地代码后，在扩展管理页面点击重新加载，再刷新要保存的网页。本地飞书复选框版本为 `4.3.14.1`；扩展详情显示旧版本时，当前代码尚未重新加载。已安装商店版时，使用扩展名称和 ID 核对当前加载版本，避免混用。
 
 扩展 ID：`ldmmifpegigmeammaeckplhnjbbpccmm`。
 
@@ -110,6 +110,6 @@ node stn-feishu/test-extension.js
 
 浏览器测试使用独立 Chrome 配置，通过真实的 `submitCapture` 成功入口验证钩子；远程 Notion 写入与飞书网络请求在测试中模拟，不需要账号，不创建外部文档。测试覆盖默认关闭、原有选区与标题、Notion 失败不触发、飞书失败不影响 Notion、面板开关、私有凭证访问、企业内分享失败及已有文档权限修复。
 
-原生控件的维护源代码为 `stn-feishu/control-component.js`，运行时使用 `popup/static/js/main.js` 内的同名组件；测试检查两者一致，并直接渲染真实的“更多字段”组件验证位置、点击和重渲染。
+原生控件的维护源代码为 `stn-feishu/control-component.js`，运行时使用 `popup/static/js/main-feishu.js` 内的同名组件；测试检查两者一致，并直接渲染真实的“更多字段”组件验证位置、点击和重渲染。
 
 实现位于 `stn-feishu/`，钩子接在 `serviceWorker.js` 中实际 Notion 写入成功后。设置页不是网页可访问资源，新增 API 主机权限仅为 `https://open.feishu.cn/*`。

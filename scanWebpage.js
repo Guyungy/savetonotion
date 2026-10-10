@@ -23212,12 +23212,171 @@ ${content}`;
       return {};
     }
   }
+function getLinuxDoArticle(doc, pageUrl, options) {
+    var u = new URL(pageUrl);
+    var route = u.pathname.match(/^\/t\/([^/]+)\/(\d+)(?:\/(\d+))?\/?$/);
+    if (u.hostname !== "linux.do" || !route) return null;
+    options = options || {};
+    var titleEl = doc.querySelector("#topic-title h1, header h1.header-title");
+    var title = titleEl ? titleEl.textContent.replace(/\s+/g, " ").trim() : "";
+    if (!title) {
+        var meta = doc.querySelector('meta[property="og:title"]');
+        title = (meta ? meta.getAttribute("content") : doc.title || "").replace(/\s+-\s+[^\n]*LINUX DO\s*$/i, "").trim();
+    }
+    var topicUrl = u.origin + "/t/" + route[1] + "/" + route[2];
+    var target = Number(options.postNumber || route[3] || 1);
+    var root = options.root || doc;
+    var bodySelector = '.cooked';
+    var owners = 'article[id^="post_"], .embedded-posts .reply[data-post-id]';
+    var bodies = Array.from(root.querySelectorAll(bodySelector));
+    if (root.matches && root.matches(bodySelector)) bodies.unshift(root);
+    // A selected paragraph/image must remain a paragraph/image, not expand to the entire floor.
+    var partial = root.closest && root.closest(bodySelector);
+    if (partial && !root.matches(bodySelector)) bodies = [root];
+    if (options.scope === "post" || options.scope === "first") {
+        if (options.scope === "first") target = 1;
+        bodies = bodies.filter(function(body) { return numberOf(body.closest(owners)) === target; });
+    }
+    function numberOf(owner) {
+        if (!owner) return null;
+        var id = (owner.id || "").match(/^post_(\d+)$/);
+        if (id) return Number(id[1]);
+        var link = owner.querySelector('.post-link-arrow a[href], .post-date a[href]');
+        if (!link) return null;
+        try {
+            var path = new URL(link.getAttribute("href"), pageUrl).pathname.match(/^\/t\/[^/]+\/(\d+)\/(\d+)\/?$/);
+            return path && path[1] === route[2] ? Number(path[2]) : null;
+        } catch (e) { return null; }
+    }
+    function clean(node) {
+        var clone = node.cloneNode(true);
+        clone.querySelectorAll("script,style,button,svg,.lightbox .meta,.avatar,.site-icon,.anchor,.cooked-selection-barrier").forEach(function(el) { el.remove(); });
+        var images = Array.from(clone.querySelectorAll("img"));
+        if (clone.matches && clone.matches("img")) images.unshift(clone);
+        images.forEach(function(img) {
+            var lightbox = img.closest("a.lightbox") || (node.matches && node.matches("img") ? node.closest("a.lightbox") : null);
+            var src = lightbox ? lightbox.getAttribute("href") : (img.getAttribute("src") || img.getAttribute("data-src"));
+            if (src) { try { img.setAttribute("src", new URL(src, pageUrl).href); } catch (e) {} }
+            if (lightbox) { img.removeAttribute("srcset"); img.removeAttribute("sizes"); }
+        });
+        var links = Array.from(clone.querySelectorAll("a[href]"));
+        if (clone.matches && clone.matches("a[href]")) links.unshift(clone);
+        links.forEach(function(a) {
+            try { a.setAttribute("href", new URL(a.getAttribute("href"), pageUrl).href); } catch (e) {}
+        });
+        return clone;
+    }
+    var entries = [];
+    bodies.forEach(function(body) {
+        var owner = body.closest(owners);
+        if (!owner) return;
+        // .cooked nested inside another .cooked is content, not another comment.
+        var cooked = body.closest(bodySelector);
+        if (cooked && cooked.parentElement.closest(bodySelector)) return;
+        var number = numberOf(owner);
+        var key = number ? "floor:" + number : "post:" + owner.getAttribute("data-post-id");
+        var embedded = owner.matches('.embedded-posts .reply[data-post-id]');
+        var old = entries.findIndex(function(entry) { return entry.key === key; });
+        if (old !== -1 && (!entries[old].embedded || embedded)) return;
+        var authorEl = owner.querySelector(".names [data-user-card]");
+        var author = authorEl ? authorEl.getAttribute("data-user-card") || authorEl.textContent.trim() : "";
+        var timeEl = owner.querySelector(".post-date [data-time], .post-date time[datetime]");
+        var published = "";
+        if (timeEl) {
+            var date = timeEl.hasAttribute("data-time") ? new Date(Number(timeEl.getAttribute("data-time"))) : new Date(timeEl.getAttribute("datetime"));
+            if (!isNaN(date.getTime())) published = date.toISOString();
+        }
+        var parent = owner.closest('[id^="embedded-posts__"]');
+        var parentNumber = parent && parent.id.match(/--(\d+)$/);
+        var entry = { key: key, number: number, author: author, published: published, embedded: embedded, replyTo: parentNumber ? Number(parentNumber[1]) : null, body: clean(body) };
+        if (old === -1) entries.push(entry);
+        else { if (!entry.replyTo) entry.replyTo = entries[old].replyTo; entries[old] = entry; }
+    });
+    var result = { title: title, url: topicUrl + (target > 1 ? "/" + target : "") };
+    if (!entries.length) return result;
+    var primary = entries.find(function(entry) { return entry.number === target; }) || entries[0];
+    if (options.root && entries.length === 1) result.url = topicUrl + (primary.number > 1 ? "/" + primary.number : "");
+    result.author = primary.author;
+    result.published = primary.published;
+    var output = doc.createElement("div");
+    entries.forEach(function(entry) {
+        var section = doc.createElement("section");
+        var heading = doc.createElement("h2");
+        heading.textContent = (entry.number ? "#" + entry.number : "评论") + (entry.author ? " · " + entry.author : "") + (entry.replyTo ? "（回复 #" + entry.replyTo + "）" : "");
+        section.appendChild(heading);
+        var info = doc.createElement("p");
+        var link = doc.createElement("a");
+        link.href = topicUrl + (entry.number > 1 ? "/" + entry.number : ""); link.textContent = "原帖"; info.appendChild(link);
+        if (entry.published) info.appendChild(doc.createTextNode(" · " + entry.published));
+        section.appendChild(info);
+        if (entry.body.matches(bodySelector)) { while (entry.body.firstChild) section.appendChild(entry.body.firstChild); }
+        else section.appendChild(entry.body);
+        output.appendChild(section);
+    });
+    result.content = output.innerHTML;
+    result.description = output.textContent.replace(/\s+/g, " ").trim().slice(0, 500);
+    var image = output.querySelector('img:not(.emoji)[src]');
+    if (image) result.image = image.getAttribute("src");
+    result.postNumbers = entries.map(function(entry) { return entry.number; }).filter(Boolean);
+    return result;
+}
+  async function scanLinuxDo(params) {
+    var pageUrl = window.location.href;
+    var options = { scope: params.linuxDoScope || "page", postNumber: params.linuxDoPostNumber };
+    var article = getLinuxDoArticle(document, pageUrl, options);
+    if (!article) return null;
+    if (params.contentSelector) {
+      try {
+        options.root = document.querySelector(params.contentSelector);
+        if (!options.root) throw new Error("未找到选取区域");
+        options.scope = "page";
+        article = getLinuxDoArticle(document, pageUrl, options);
+        if (!article.content) throw new Error("选取区域内没有已加载的楼层或评论");
+      } catch (error) {
+        return { ...article, content: "", error: "无法读取 Linux.do 选取区域：" + error.message };
+      }
+    }
+    if (!params.skipContent && !params.asyncVariablesOnly && !article.content && !params.contentSelector) {
+      // Only recover the requested floor if there are no loaded bodies in the capture scope.
+      // Page capture never fetches the rest of the discussion or expands collapsed replies.
+      var route = new URL(pageUrl).pathname.match(/^\/t\/[^/]+\/(\d+)(?:\/(\d+))?/);
+      var number = options.scope === "first" ? 1 : Number(options.postNumber || route[2] || 1);
+      try {
+        var response = await fetch(window.location.origin + "/t/" + route[1] + ".json?post_number=" + number, { credentials: "same-origin" });
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        var topic = await response.json();
+        var requested = topic.post_stream && topic.post_stream.posts.find(function(p) { return p.post_number === number; });
+        if (!requested || !requested.cooked) throw new Error("指定楼层不可用");
+        var doc = document.implementation.createHTMLDocument("");
+        var heading = doc.createElement("div"); heading.id = "topic-title";
+        var h1 = doc.createElement("h1"); h1.textContent = topic.title || article.title; heading.appendChild(h1); doc.body.appendChild(heading);
+        var post = doc.createElement("article"); post.id = "post_" + number;
+        var names = doc.createElement("div"); names.className = "names";
+        var author = doc.createElement("a"); author.setAttribute("data-user-card", requested.username || ""); names.appendChild(author); post.appendChild(names);
+        var date = doc.createElement("div"); date.className = "post-date";
+        var time = doc.createElement("time"); time.setAttribute("datetime", requested.created_at || ""); date.appendChild(time); post.appendChild(date);
+        var cooked = doc.createElement("div"); cooked.className = "cooked"; cooked.innerHTML = requested.cooked; post.appendChild(cooked); doc.body.appendChild(post);
+        article = getLinuxDoArticle(doc, pageUrl, { scope: "post", postNumber: number });
+      } catch (error) {
+        return { ...article, content: "", error: "无法读取 Linux.do #" + number + " 楼，请加载该楼层后重试（" + error.message + "）" };
+      }
+    }
+    if (params.skipContent || params.asyncVariablesOnly) { delete article.content; return article; }
+    if (params.v2) {
+      article.content = createMarkdownContent(article.content, article.url, s2nTurndownPlugins);
+      article.contentFormat = "md";
+      article.preview = stripMarkdownForPreview(article.content);
+    }
+    return article;
+  }
   async function scanWebpage() {
     const params = getExtraParams();
     if (window.location.href.endsWith(".pdf")) {
       return await parseFromPdf();
     }
     console.log("scanWebpage params", params);
+    var linuxDo = await scanLinuxDo(params);
+    if (linuxDo) return linuxDo;
     if (params.v2) {
       if (params.v2OnlyCustomExtractor) {
         if (isCustomExtractorAvailable()) {

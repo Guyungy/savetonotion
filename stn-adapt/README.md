@@ -9,6 +9,7 @@
 - `level-plus适配说明.md` —— 单站点适配实例（phpwind，需改 DOM 层）
 - `discuz适配说明.md` —— Discuz! X 论坛**通用**适配（覆盖一整类站点）
 - `test-levelplus.js` + `sample-levelplus.html` —— 离线单测与其页面快照
+- `linuxdo适配说明.md` + `test-linuxdo*.js` + `sample-linuxdo*.html` —— Linux.do 已加载楼层、展开评论和区域选择适配
 - `test-discuz.js` —— Discuz 适配的离线单测（构造页面，无需联网）
 
 ## 🔴 改任何东西之前先读这条
@@ -63,12 +64,15 @@ python add_site.py --restore
 ### 验证
 
 ```bash
-export NODE_PATH="C:/Users/diriw/.workbuddy/binaries/node/workspace/node_modules"
+npm install --prefix /tmp/stn-test-deps --no-audit --no-fund playwright-core jsdom
+export NODE_PATH=/tmp/stn-test-deps/node_modules
 
 node stn-adapt/verify-extension-loads.js     # 扩展能否加载
 node stn-adapt/check-snapshot.js             # 页面快照是不是真内容（不是拦截页）
 node stn-adapt/test-levelplus.js             # level-plus 离线单测
 node stn-adapt/test-discuz.js                # Discuz 离线单测（构造页面）
+node stn-adapt/test-linuxdo.js               # Linux.do 首帖与接口恢复
+node stn-adapt/test-linuxdo-comments.js      # 已加载楼层、展开评论及区域选择
 node stn-adapt/verify-levelplus-live.js      # 真机开目标页验证
 node stn-adapt/control-noext.js              # 无扩展对照（排除站点自身报错）
 ```

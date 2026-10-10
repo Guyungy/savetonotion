@@ -110,6 +110,8 @@ node stn-feishu/test-extension.js
 
 浏览器测试使用独立 Chrome 配置，通过真实的 `submitCapture` 成功入口验证钩子；远程 Notion 写入与飞书网络请求在测试中模拟，不需要账号，不创建外部文档。测试覆盖默认关闭、原有选区与标题、Notion 失败不触发、飞书失败不影响 Notion、面板开关、私有凭证访问、企业内分享失败及已有文档权限修复。
 
-原生控件的维护源代码为 `stn-feishu/control-component.js`，运行时使用 `popup/static/js/main-feishu.js` 内的同名组件；测试检查两者一致，并直接渲染真实的“更多字段”组件验证位置、点击和重渲染。
+原生控件的维护源代码为 `stn-feishu/control-component.js`，运行时使用 `popup/static/js/main-feishu.js` 内的同名组件；测试检查两者一致，并直接渲染实际保存面板的 `zfe` 组件，验证位置、点击、重渲染，以及没有隐藏字段时仍显示复选框。表单编辑器使用另一套“更多字段”组件，不能用它代替保存面板验证。
+
+已在当前 Chrome 加载本地扩展后验证：保存面板“3 more fields”右侧显示“同步到飞书”，勾选与取消均正常；同步保持可选，默认关闭。
 
 实现位于 `stn-feishu/`，钩子接在 `serviceWorker.js` 中实际 Notion 写入成功后。设置页不是网页可访问资源，新增 API 主机权限仅为 `https://open.feishu.cn/*`。

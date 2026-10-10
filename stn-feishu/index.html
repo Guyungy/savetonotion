@@ -3,9 +3,9 @@
 <form id="config"><label><input id="enabled" type="checkbox"> 启用：Notion 保存成功后同步到飞书</label>
 <label>App ID<input id="appId" autocomplete="off" required placeholder="cli_…"></label>
 <label>App Secret<input id="appSecret" type="password" autocomplete="off" placeholder="首次填写；已有密钥时可留空"></label>
-<label>目标文件夹链接或 token（可选）<input id="folderToken" autocomplete="off" placeholder="https://…feishu.cn/drive/folder/…"></label>
-<p>企业自建应用需要云文档创建、编辑和内容转换权限，目标文件夹须允许应用访问。未填文件夹时文档归应用所有。保存后会自动设置为“企业内获得链接的人可编辑”，并关闭对外分享。</p>
+<label>保存身份<select id="identity"><option value="user">我的个人空间（推荐，需连接）</option><option value="app">应用空间（原模式）</option></select></label><label>目标文件夹链接或 token（可选）<input id="folderToken" autocomplete="off" placeholder="https://…feishu.cn/drive/folder/…"></label>
+<p>个人模式：留空文件夹保存到登录用户的个人空间，也可填自己的文件夹链接；分享范围沿用飞书规则，不自动公开。应用模式仍归应用所有，并设置企业内链接可编辑。</p>
 <p>密钥仅存扩展本地，不加密，不提交至 GitHub。图片以原图链接保存。飞书失败会单独提示，Notion 的成功结果不受影响。</p>
 <button type="submit">验证并保存设置</button> <button type="button" id="forget">清除应用设置</button></form>
-<section><h2>修复已有文档权限</h2><p>旧版本创建的文档可能需要申请权限。可直接修复最近一次保存的文档，或填写本应用创建的文档链接。</p><label>飞书文档链接（留空使用最近一次文档）<input id="repairUrl" placeholder="https://…feishu.cn/docx/…"></label><button type="button" id="repairAccess">设置企业内可编辑</button></section><p id="status" role="status" aria-live="polite"></p><a id="result" target="_blank" rel="noopener" hidden>打开最近的飞书文档</a>
+<section><h2>连接我的飞书</h2><p id="connection">尚未连接</p><p>先验证保存应用设置，再在飞书后台安全设置添加以下重定向 URL：</p><input id="redirectUrl" readonly aria-label="飞书 OAuth 回调地址"><p>权限管理中开通用户身份权限 <code>docx:document</code> 和 <code>offline_access</code>，发布后点击连接。仅请求文档创建编辑与自动刷新授权。</p><button id="connect" type="button">连接我的飞书</button> <button id="disconnect" type="button">断开个人连接</button><p>连接成功切换个人模式并清空原应用文件夹，请重新填写个人文件夹（可留空）。断开清理本地授权并关闭同步；服务端撤销请使用飞书授权管理。</p></section><section><h2>修复已有应用文档权限</h2><p>旧版本创建的文档可能需要申请权限。可直接修复最近一次保存的文档，或填写本应用创建的文档链接。</p><label>飞书文档链接（留空使用最近一次文档）<input id="repairUrl" placeholder="https://…feishu.cn/docx/…"></label><button type="button" id="repairAccess">设置企业内可编辑</button></section><p id="status" role="status" aria-live="polite"></p><a id="result" target="_blank" rel="noopener" hidden>打开最近的飞书文档</a>
 </main></body></html>

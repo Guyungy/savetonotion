@@ -1,4 +1,4 @@
-importScripts('stn-feishu/api.js');
+importScripts('stn-feishu/api.js', 'stn-feishu/oauth.js');
 const FEISHU_CONFIG_KEY = 'stnFeishuConfig';
 const FEISHU_STATUS_KEY = 'stnFeishuStatus';
 function openFeishu() { chrome.tabs.create({ url: chrome.runtime.getURL('stn-feishu/index.html') }); }
@@ -14,7 +14,9 @@ async function feishuMessage(message, sender) {
     return { enabled: message.enabled === true };
   }
   if (sender.url?.split(/[?#]/)[0] !== chrome.runtime.getURL('stn-feishu/index.html') || sender.tab?.url?.startsWith('http')) throw new Error('请在扩展的飞书设置页面中操作');
-  if (message.action === 'config') return { appId: stored.appId || '', folderToken: stored.folderToken || '', hasSecret: !!stored.appSecret, enabled: stored.enabled === true };
+  if (message.action === 'connect') return feishuConnect(stored);
+  if (message.action === 'disconnect') { await chrome.storage.local.remove(FEISHU_USER_KEY); await chrome.storage.local.set({[FEISHU_CONFIG_KEY]:{...stored,identity:'user',enabled:false}}); return {}; }
+  if (message.action === 'config') return { identity:stored.identity||'app', connected:!!(await chrome.storage.local.get(FEISHU_USER_KEY))[FEISHU_USER_KEY], redirectUrl:feishuRedirect(), scopes:FEISHU_SCOPES, appId: stored.appId || '', folderToken: stored.folderToken || '', hasSecret: !!stored.appSecret, enabled: stored.enabled === true };
   if (message.action === 'configure') {
     const appId = String(message.config?.appId || '').trim();
     const appSecret = String(message.config?.appSecret || (appId === stored.appId ? stored.appSecret : '') || '').trim();
@@ -26,8 +28,9 @@ async function feishuMessage(message, sender) {
     }
     if (!/^cli_[a-zA-Z0-9]+$/.test(appId) || !appSecret) throw new Error('请填写有效的 App ID 和 App Secret');
     if (folderToken && !/^[\w-]+$/.test(folderToken)) throw new Error('文件夹 token 格式不正确');
-    const config = { appId, appSecret, folderToken, enabled: message.config?.enabled === true };
+    const config = { appId, appSecret, folderToken, identity:message.config?.identity==='user'?'user':'app', enabled: message.config?.enabled === true };
     await new StnFeishuApi.Client(config).token();
+    if(appId!==stored.appId||appSecret!==stored.appSecret)await chrome.storage.local.remove(FEISHU_USER_KEY);
     await chrome.storage.local.set({ [FEISHU_CONFIG_KEY]: config });
     return { ok: true };
   }
@@ -49,7 +52,7 @@ async function feishuMessage(message, sender) {
     }
     return result;
   }
-  if (message.action === 'forget') { await chrome.storage.local.remove([FEISHU_CONFIG_KEY, FEISHU_STATUS_KEY]); return {}; }
+  if (message.action === 'forget') { await chrome.storage.local.remove([FEISHU_CONFIG_KEY, FEISHU_STATUS_KEY, FEISHU_USER_KEY]); return {}; }
   throw new Error('未知的飞书操作');
 }
 function feishuDispatch(message, sender, reply) {
@@ -93,7 +96,7 @@ async function feishuAfterNotion(capture, notionResult) {
     article.notionBlockId = notionResult.notionBlockId || '';
     article.sourceUrl = capture.context?.url || '';
     await chrome.storage.local.set({ [FEISHU_STATUS_KEY]: { state: 'saving', title: article.title, notionBlockId: article.notionBlockId, sourceUrl: article.sourceUrl, at: Date.now() } });
-    const result = await new StnFeishuApi.Client(config).save(article);
+    const result = await new StnFeishuApi.Client(config, fetch, config.identity==='user'?()=>feishuUserToken(config):null).save(article);
     await chrome.storage.local.set({ [FEISHU_STATUS_KEY]: { state: result.partial || result.permissionError ? 'error' : 'success', ...result, title: article.title, notionBlockId: article.notionBlockId, sourceUrl: article.sourceUrl, at: Date.now() } });
   } catch (error) {
     // A Feishu failure must never be reported as a failed Notion save.

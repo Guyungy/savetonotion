@@ -41,7 +41,8 @@
    "host_permissions": [
       "https://*.notion.so/*",
       "https://*.notion.com/*",
-      "https://open.feishu.cn/*"
+      "https://open.feishu.cn/*",
+      "https://accounts.feishu.cn/*"
    ],
    "icons": {
       "128": "assets/icon128.png",
@@ -64,10 +65,11 @@
       "cookies",
       "scripting",
       "contextMenus",
-      "unlimitedStorage"
+      "unlimitedStorage",
+      "identity"
    ],
    "update_url": "https://clients2.google.com/service/update2/crx",
-   "version": "4.3.14.1",
+   "version": "4.3.14.2",
    "web_accessible_resources": [
       {
          "matches": [

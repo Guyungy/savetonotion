@@ -30,7 +30,7 @@
     return result;
   }
   class Client {
-    constructor(config, fetcher = fetch) { this.config = config; this.fetcher = fetcher; }
+    constructor(config, fetcher = fetch, tokenProvider = null) { this.config = config; this.fetcher = fetcher; this.tokenProvider = tokenProvider; }
     async request(path, body, token, method = 'POST') {
       const response = await this.fetcher(BASE + path, {
         method, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -45,6 +45,8 @@
       return result.data || result;
     }
     async token() {
+      if(this.tokenProvider)return this.tokenProvider();
+      if(this.config.identity==='user')throw new Error('请先连接我的飞书');
       const data = await this.request('/auth/v3/tenant_access_token/internal', { app_id: this.config.appId, app_secret: this.config.appSecret });
       if (!data.tenant_access_token) throw new Error('飞书没有返回应用访问凭证');
       return data.tenant_access_token;
@@ -77,6 +79,7 @@
         }
       } catch (error) { result.partial = true; result.error = error.message; }
       // Access is part of completion, including documents with partially written bodies.
+      if(this.config.identity==='user'){result.accessConfigured=true;result.identity='user';return result;}
       try { await this.shareDocument(document.document_id, token); result.accessConfigured = true; }
       catch (error) { result.accessConfigured = false; result.permissionError = `文档已创建，但企业内编辑权限设置失败：${error.message}`; }
       return result;

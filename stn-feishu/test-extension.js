@@ -32,13 +32,13 @@ const root = path.resolve(__dirname, '..');
       no=async()=>{if(globalThis.failNotion)throw new Error('mock Notion failed');return{savingAs:'page',notionBlockId:'notion-test',notionParentId:'parent',title:'标题'};};
       globalThis.capture={session:{page:{id:'parent',type:'collection',spaceId:'space'},notionContext:{spacesMap:{space:{linkedUserIds:['user']}}}},payload:{type:'note',note:[['编辑后的标题']],properties:{content:{content:{type:'list',items:[{markdown:'## 所选第 3 楼\n\n```js\nconst a = 1;\n```'},{markdown:'所选评论\n\n![截图](https://example.com/image.png)'}]}}}},context:{executeDirectly:true,url:'https://linux.do/t/topic/1'}};
     });
-    await page.locator('#appId').fill('cli_test');await page.locator('#appSecret').fill('fake-secret');await page.getByRole('button',{name:'验证并保存设置'}).click();
+    await page.locator('#identity').selectOption('user');await page.locator('#appId').fill('cli_test');await page.locator('#appSecret').fill('fake-secret');await page.getByRole('button',{name:'验证并保存设置'}).click();
     await page.waitForFunction(()=>document.getElementById('status').textContent.includes('保持关闭'));
-    const config=await page.evaluate(()=>ask('config'));assert.equal(config.enabled,false);assert.equal(config.appSecret,undefined);
+    const config=await page.evaluate(()=>ask('config'));assert.equal(config.identity,'user');assert.equal(config.enabled,false);await page.locator('#identity').selectOption('app');await page.getByRole('button',{name:'验证并保存设置'}).click();await page.waitForFunction(()=>document.getElementById('status').textContent.includes('保持关闭'));assert.equal(config.appSecret,undefined);
     // Exercise the actual Notion submit handler, with only the remote Notion writer mocked.
     assert.equal(await worker.evaluate(()=>M.submitCapture(capture,{}, {onProgress(){}})),true);
     await worker.evaluate(()=>new Promise(resolve=>setTimeout(resolve,100)));
-    assert.equal(await worker.evaluate(()=>feishuCalls.length),1); // Credential validation only; hook OFF.
+    assert.equal(await worker.evaluate(()=>feishuCalls.length),2); // Credential validations only; hook OFF.
     await page.evaluate(()=>ask('toggle',{enabled:true}));
     assert.equal(await worker.evaluate(()=>M.submitCapture(capture,{}, {onProgress(){}})),true);
     await page.waitForFunction(async()=> (await ask('state')).lastResult?.state==='success');

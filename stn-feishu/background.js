@@ -29,7 +29,7 @@ async function feishuMessage(message, sender) {
     if (!/^cli_[a-zA-Z0-9]+$/.test(appId) || !appSecret) throw new Error('请填写有效的 App ID 和 App Secret');
     if (folderToken && !/^[\w-]+$/.test(folderToken)) throw new Error('文件夹 token 格式不正确');
     const config = { appId, appSecret, folderToken, identity:message.config?.identity==='user'?'user':'app', enabled: message.config?.enabled === true };
-    await new StnFeishuApi.Client(config).token();
+    await new StnFeishuApi.Client({ ...config, identity: 'app' }).token();
     if(appId!==stored.appId||appSecret!==stored.appSecret)await chrome.storage.local.remove(FEISHU_USER_KEY);
     await chrome.storage.local.set({ [FEISHU_CONFIG_KEY]: config });
     return { ok: true };

@@ -86,7 +86,7 @@ const root = path.resolve(__dirname, '..');
     assert.equal(await popup.getByRole('link',{name:'打开飞书文档'}).getAttribute('href'),'https://feishu.cn/docx/testdoc');
     await popup.evaluate(()=>__stnRenderFields({successTest:true,state:'success',pageUrl:'https://notion.so/different-page',savingMode:'save',initialHeight:400,haveDesktopApp:false}));
     assert.equal(await popup.getByRole('link',{name:'打开飞书文档'}).count(),0);
-    await worker.evaluate(()=>chrome.storage.local.set({stnFeishuConfig:{appId:'cli_test',appSecret:'fake-secret',enabled:true,identity:'user'},stnFeishuUser:{appId:'cli_test',accessToken:'fake-personal-token',expiresAt:Date.now()+3600000,refreshToken:'fake-refresh',refreshExpiresAt:Date.now()+86400000}}));
+    await worker.evaluate(()=>chrome.storage.local.set({stnFeishuConfig:{appId:'cli_test',appSecret:'fake-secret',enabled:true,identity:'user'},stnFeishuUser:{appId:'cli_test',accessToken:'fake-personal-token',expiresAt:Date.now()+3600000,refreshToken:'fake-refresh',refreshExpiresAt:Date.now()+86400000,scope:'docx:document docx:document.block:convert offline_access'}}));
     const personalStart=await worker.evaluate(()=>feishuCalls.length);
     assert.equal(await worker.evaluate(()=>M.submitCapture(capture,{}, {onProgress(){}})),true);
     await page.waitForFunction(async()=> (await ask('state')).lastResult?.identity==='user');

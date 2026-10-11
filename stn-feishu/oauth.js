@@ -1,6 +1,6 @@
 /* Personal OAuth credentials stay in extension-local storage, never in messages. */
 const FEISHU_USER_KEY = 'stnFeishuUser';
-const FEISHU_SCOPES = 'docx:document offline_access';
+const FEISHU_SCOPES = 'docx:document docx:document.block:convert offline_access';
 let feishuLoginFlight, feishuRefreshFlight;
 const feishuRedirect = () => chrome.identity.getRedirectURL('feishu');
 function feishuRandom() {
@@ -46,6 +46,8 @@ async function feishuUserToken(config) {
   feishuRefreshFlight=(async()=>{
     const user=(await chrome.storage.local.get(FEISHU_USER_KEY))[FEISHU_USER_KEY];
     if(user?.appId!==config.appId)throw new Error('请先连接我的飞书，个人模式不会改用应用身份保存');
+    if (!String(user.scope || '').split(/\s+/).includes('docx:document.block:convert'))
+      throw new Error('个人授权缺少正文转换权限 docx:document.block:convert。请在飞书后台开通该用户权限并发布，再点击「连接我的飞书」重新授权');
     if(user.expiresAt>Date.now()+60000)return user.accessToken;
     if(!user.refreshToken||user.refreshExpiresAt<=Date.now())throw new Error('飞书个人授权已过期，请重新连接我的飞书');
     const next=await feishuOAuthToken(config,{grant_type:'refresh_token',refresh_token:user.refreshToken});
